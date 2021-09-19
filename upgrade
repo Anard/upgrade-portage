@@ -1,0 +1,150 @@
+#!/bin/bash
+# Script to sync && upgrade Gentoo portage
+configPath="/usr/lib"
+if [ -f "${configPath}/shell-text.cnf" ]; then
+	source "${configPath}/shell-text.cnf"
+fi
+
+# functions
+set_param () {
+	case "$1" in
+	 's'|'sync')
+		[ $2 -eq 0 ] && SYNC=0 || SYNC=1
+		;;
+	 'q'|'quiet')
+		[ $2 -eq 0 ] && QUIET=0 || QUIET=1
+		;;
+	 'v'|'verbose')
+		[ $2 -eq 0 ] && VERBOSE=0 || VERBOSE=1
+		;;
+	 *)
+		echo -e "${red}An error occurred while setting parameters${normal}"
+		return 1
+		;;
+	esac
+return 0
+}
+
+# init
+SET='@world'
+set_param 'q' 0
+set_param 'v' 0
+set_param 's' 1
+
+# get parameters
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+          "-h"|"--help")
+                # HELP
+                help=$( cat << HELP
+${bold}Script for upgrading Gentoo${normal}
+Usage : ${Blue}upgrade${normal} [${Green}OPTIONS${normal}] [${Green}@SET${normal}]
+
+${Green}OPTIONS${normal} :
+        ${bold}-h|--help${normal}	Print this help and exit
+        ${bold}-q|--quiet${normal}    	Run quietly
+        ${bold}-v|--verbose${normal}    Run verbosely
+
+${Green}SET${normal} :
+	Set to upgrade, if not set ${green}@world${normal} will be used
+
+HELP
+)
+                echo -e "$help"
+                exit 0
+                ;;
+
+	 @*)
+		SET=$1
+		;;
+
+	 '-q'|'--quiet')
+		set_param 'q' 1 || exit 255
+		;;
+	 '-v'|'--verbose')
+		set_param 'v' 1 || exit 255
+		;;
+
+	 '-qv'|'-vq')
+		set_param 'q' 1 && set_param 'v' 1 || exit 255
+		;;
+
+	 *)
+		echo -e "${red}Unknown parameter ${1}${normal}, exiting..." && exit 255
+		;;
+	esac
+	shift
+done
+
+# get repos locations
+repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
+
+# search for last sync timestamps
+last=0
+echo -e "${green}Checking repositories...${normal}"
+for i in "${!repos[@]}"; do
+	if [ -f "${repos[$i]}/Manifest" ]; then
+		time[$i]=$( date -d `grep TIMESTAMP "${repos[$i]}/Manifest" | cut -d ' ' -f2` "+%s" )
+		if [ ${time[$i]} -gt `date '+%s'` ]; then
+			echo -e "${red}Sync date for ${repos[$i]##*/} is newer than now${normal}, please correct your local time"
+			echo "Exiting..."
+			exit 1
+		fi
+
+		[ $QUIET -gt 0 ] && [ $VERBOSE -eq 0 ] || echo "Last sync for ${repos[$i]##*/} is `date -d @${time[$i]}`"
+	else
+		[ $VERBOSE -eq 0 ] || echo "Unknown last sync for ${repos[$i]##*/}"
+	fi
+done
+for i in "${!time[@]}"; do
+	if [ ${time[$i]} -gt $last ]; then
+		last=${time[$i]}
+	fi
+done
+
+# + 1 day
+((last+=86400))
+now=$(date "+%s")
+# less than 1 day
+if [ $now -lt $last ]; then
+
+	question=$( cat << QUESTION
+${bold}Your last sync is newer than 1 day${normal}. Do you want to sync again ? (y/N)
+--> 
+
+QUESTION
+)
+	while true;	do
+
+		read -p "$question" ans
+
+		case "$ans" in
+			[nN]*|'')
+				SYNC=0
+				break 2
+				;;
+
+			[yY]*)
+				break 2
+				;;
+
+			*)
+				echo "Unknown answer (y/N ?)"
+				;;
+
+		esac
+	done
+fi
+
+# sync
+if [ $SYNC -gt 0 ]; then
+	echo -e "${green}Syncing repositories...${normal}"
+	emerge --sync || exit 2
+fi
+
+# upgrade
+[ $QUIET -eq 0 ] && QUIET='' || QUIET='q'
+[ $VERBOSE -eq 0 ] && VERBOSE='' || VERBOSE='v'
+echo -e "${green}Checking for upgrades...${normal}"
+emerge -a${QUIET}${VERBOSE}uDN ${SET}
+exit $?
