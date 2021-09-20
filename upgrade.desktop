@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=System upgrade
+Name[fr]=Mise à jour système
+GenericName=System upgrade
+GenericName[fr]=Mise à jour système
+Exec=upgrade -x | zenity --width=500 --progress --pulsate --title "Upgrading system"
+Terminal=false
+Type=Application
+Icon=aptdaemon-update
+Categories=System;GTK;
