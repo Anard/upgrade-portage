@@ -17,6 +17,10 @@ set_param () {
 	 'v'|'verbose')
 		[ $2 -eq 0 ] && VERBOSE=0 || VERBOSE=1
 		;;
+	 'x')
+		[ $2 -eq 0 ] && X=0 || X=1
+		;;
+
 	 *)
 		echo -e "${red}An error occurred while setting parameters${normal}"
 		return 1
@@ -27,6 +31,7 @@ return 0
 
 # init
 SET='@world'
+set_param 'x' 0
 set_param 'q' 0
 set_param 'v' 0
 set_param 's' 1
@@ -44,6 +49,7 @@ ${Green}OPTIONS${normal} :
         ${bold}-h|--help${normal}	Print this help and exit
         ${bold}-q|--quiet${normal}    	Run quietly
         ${bold}-v|--verbose${normal}    Run verbosely
+        ${bold}-x${normal}    Run graphically
 
 ${Green}SET${normal} :
 	Set to upgrade, if not set ${green}@world${normal} will be used
@@ -58,6 +64,9 @@ HELP
 		SET=$1
 		;;
 
+	 '-x')
+		set_param 'x' 1 && set_param 'q' 1 && set_param 'v' 0 && break || exit 255
+		;;
 	 '-q'|'--quiet')
 		set_param 'q' 1 || exit 255
 		;;
@@ -81,12 +90,15 @@ repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 
 # search for last sync timestamps
 last=0
-echo -e "${green}Checking repositories...${normal}"
+text="Checking repositories..."
+[ $X -eq 0 ] && echo -e "${green}${text}${normal}" || echo "# ${text}"
 for i in "${!repos[@]}"; do
 	if [ -f "${repos[$i]}/Manifest" ]; then
 		time[$i]=$( date -d `grep TIMESTAMP "${repos[$i]}/Manifest" | cut -d ' ' -f2` "+%s" )
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
-			echo -e "${red}Sync date for ${repos[$i]##*/} is newer than now${normal}, please correct your local time"
+			text1="Sync date for ${repos[$i]##*/} is newer than now"
+			text2=", please correct your local time"
+			[ $X -eq 0 ] &&	echo -e "${red}${text1}${normal}${text2}" || zenity --width=500 --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
 			echo "Exiting..."
 			exit 1
 		fi
@@ -108,43 +120,80 @@ now=$(date "+%s")
 # less than 1 day
 if [ $now -lt $last ]; then
 
-	question=$( cat << QUESTION
-${bold}Your last sync is newer than 1 day${normal}. Do you want to sync again ? (y/N)
---> 
+	text1="Your last sync is newer than 1 day"
+	text2="Do you want to sync again ?"
+	text3="-->" 
 
-QUESTION
-)
-	while true;	do
+	if [ $X -eq 0 ]; then
+		echo "${bold}${text1}${normal}. ${text2} (y/N)"
+		while true;	do
 
-		read -p "$question" ans
+			read -p "${text3}" ans
 
-		case "$ans" in
-			[nN]*|'')
-				SYNC=0
-				break 2
-				;;
+			case "$ans" in
+				[nN]*|'')
+					SYNC=0
+					break 2
+					;;
 
-			[yY]*)
-				break 2
-				;;
+				[yY]*)
+					break 2
+					;;
 
-			*)
-				echo "Unknown answer (y/N ?)"
-				;;
+				*)
+					echo "Unknown answer (y/N ?)"
+					;;
 
-		esac
-	done
+			esac
+		done
+	else
+		if zenity --width=300 --question --title "${text1}" --text "${text2}" --default-cancel; then
+			SYNC=1
+		else SYNC=0
+		fi
+	fi
 fi
 
 # sync
 if [ $SYNC -gt 0 ]; then
-	echo -e "${green}Syncing repositories...${normal}"
-	emerge --sync || exit 2
+	text="Syncing repositories..."
+	[ $X -eq 0 ] &&	echo -e "${green}${text}${normal}" || echo "# ${text}"
+	[ $X -eq 0 ] && emerge --sync || sudo -A emerge --sync
+	[ $? -gt 0 ] && exit 2
 fi
 
 # upgrade
-[ $QUIET -eq 0 ] && QUIET='' || QUIET='q'
-[ $VERBOSE -eq 0 ] && VERBOSE='' || VERBOSE='v'
-echo -e "${green}Checking for upgrades...${normal}"
-emerge -a${QUIET}${VERBOSE}uDN ${SET}
-exit $?
+
+text="Checking for upgrades..."
+[ $X -eq 0 ] && echo -e "${green}${text}${normal}" || echo "# ${text}"
+if [ $X -gt 0 ]; then
+	OUTPUT=`emerge -pquDN ${SET}`
+	if [ "${OUTPUT}" = "" ]; then
+		echo "# Your system is already up to date"
+		echo "100"
+		exit 0
+	else
+		zenity --width=500 --question --title "Here are packages that need updates" --text "${OUTPUT}"
+		if [ $? -eq 0 ]; then
+			echo "# Upgrading your system"
+			sudo -A emerge -quDN ${SET}
+				
+		else exit 0
+		fi
+	fi
+
+else
+	[ $QUIET -eq 0 ] && QUIET='' || QUIET='q'
+	[ $VERBOSE -eq 0 ] && VERBOSE='' || VERBOSE='v'
+	emerge -a${QUIET}${VERBOSE}uDN ${SET}
+fi
+
+if [ $? -gt 0 ]; then
+	text1="An error occurred on compilation time"
+	text2=", please check logs for more information"
+	[ $X -eq 0 ] && echo -e "${red}${text1}${normal}, ${text2}" || { echo "# <span color=\"red\">${text1}</span>${text2}"; echo "100"; }
+	exit 3
+fi
+
+[ $X -gt 0 ] && { echo "# Your system is now up to date"; echo "100"; }
+exit 0
