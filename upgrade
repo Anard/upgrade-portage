@@ -175,18 +175,19 @@ if [ $X -gt 0 ]; then
 	else
 		zenity --width=500 --question --title "Here are packages that need updates" --text "${OUTPUT}"
 		if [ $? -eq 0 ]; then
-			echo "# Upgrading your system"
-			sudo -A emerge -quDN ${SET} > /tmp/upgrade-portage.log &
-			pid=$!
+			(
+				echo "# Upgrading your system"
+				sudo -A emerge -quDN ${SET} > /tmp/upgrade-portage.log &
+				pid=$!
 
-			while [[ $(pidof emerge) = $PID ]]
-			do
-				sleep 1
-				tail -f -n 1 /tmp/upgrade-portage.log | sed 's/\(.*\)/# \1/'
-				#tail -f -n 1 /var/log/emerge.log | sed 's/\(.*\)/# \1/'
-			done
+				while [[ $(pidof emerge) = $PID ]]
+				do
+					sleep 1
+					echo `tail -f -n 1 /tmp/upgrade-portage.log | sed 's/\(.*\)/# \1/'`
+					#tail -f -n 1 /var/log/emerge.log | sed 's/\(.*\)/# \1/'
+				done
+			) | zenity --progress --width=0 --title "Ugrading your system" --pulsate --text ""
 
-				
 		else exit 0
 		fi
 	fi
