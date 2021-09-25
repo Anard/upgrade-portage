@@ -165,7 +165,7 @@ if [ $SYNC -gt 0 ]; then
 	else
 		(
 			sudo -A emerge --sync 2>&1 > "${tmpFile}" &
-			while pgrep emerge
+			while [ $(pgrep emerge) -gt 0 ]
 			do
 				sleep .5
 				echo `tail -n 1 "${tmpFile}" | grep -v "^$" | sed 's/^/# /'`
