@@ -4,6 +4,7 @@ configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
 	source "${configPath}/shell-text.cnf"
 fi
+tmpFile="/tmp/upgrade-portage.log"
 
 # functions
 set_param () {
@@ -91,7 +92,7 @@ repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 # search for last sync timestamps
 last=0
 text="Checking repositories..."
-[ $X -eq 0 ] && echo -e "${green}${text}${normal}" || echo "# ${text}"
+echo -e "${green}${text}${normal}"
 for i in "${!repos[@]}"; do
 	if [ -f "${repos[$i]}/Manifest" ]; then
 		time[$i]=$( date -d `grep TIMESTAMP "${repos[$i]}/Manifest" | cut -d ' ' -f2` "+%s" )
@@ -160,18 +161,17 @@ if [ $SYNC -gt 0 ]; then
 	if [ $X -eq 0 ]; then
 		echo -e "${green}${text}${normal}"
 		emerge --sync
+		[ $? -gt 0 ] && exit 2
 	else
 		(
-			sudo -A emerge --sync > /tmp/upgrade-portage.log &
-			pid=$!
-
-			while [[ $(pidof emerge) = $pid ]]; do
+			sudo -A emerge --sync 2>&1 > "${tmpFile}" &
+			while pgrep emerge
+			do
 				sleep .5
-				echo `tail -f -n 1 /var/log/emerge.log | sed 's/\(.*\)/# \1/'`
+				echo `tail -n 1 "${tmpFile}" | grep -v "^$" | sed 's/^/# /'`
 			done
-		) | zenity --progress --width=500 --title "${text}" --pulsate --text ""
+		) | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text "" || sudo pkill emerge
 	fi
-	[ $? -gt 0 ] && exit 2
 fi
 
 # upgrade
@@ -179,26 +179,26 @@ fi
 text="Checking for upgrades..."
 [ $X -eq 0 ] && echo -e "${green}${text}${normal}" || echo "# ${text}"
 if [ $X -gt 0 ]; then
-	OUTPUT=`emerge -pquDN ${SET}`
+	emerge -pquDN ${SET} > "${tmpFile}"
 	if [ "${OUTPUT}" = "" ]; then
 		echo "# Your system is already up to date"
 		echo "100"
 		exit 0
 	else
-		zenity --width=500 --question --title "Here are packages that need updates" --text "${OUTPUT}"
+		zenity --width=500 --question --title "Here are packages that need updates" --text `cat "${tmpFile}"`
 		if [ $? -eq 0 ]; then
 			(
-				sudo -A emerge -quDN ${SET} > /tmp/upgrade-portage.log &
-				pid=$!
+				sudo -A emerge -quDN ${SET} 2>&1 > "${tmpFile}" &
 
-				while [[ $(pidof emerge) = $pid ]]
+				while pgrep emerge
 				do
-					sleep 1
-					tail -f -n 1 /var/log/emerge.log | sed 's/\(.*\)/# \1/'
+					sleep .5
+					echo `tail -n 1 "${tmpFile}" | grep -v "^$" | sed 's/^/# /'`
+					echo `tail -n 1 "${tmpFile}" | grep Emerging | awk -F[\(\)] '{ print $2 }' | sed 's/ of /*100\//' | bc`
 				done
-			) | zenity --progress --width=500 --title "Ugrading your system" --pulsate --text ""
+			) | zenity --progress --width=500 --title "Ugrading your system" --auto-close --text "${text}" || ( sudo pkill emerge && exit 1 )
 
-		else exit 0
+		else exit 1
 		fi
 	fi
 
@@ -215,5 +215,6 @@ if [ $? -gt 0 ]; then
 	exit 3
 fi
 
-[ $X -gt 0 ] && { echo "# Your system is now up to date"; echo "100"; }
+[ $X -gt 0 ] && zenity --info --width 500 --title "Upgrade" --text "Your system is now up to date"
+
 exit 0
