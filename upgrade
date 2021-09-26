@@ -41,18 +41,12 @@ print_line () {
 
 # exit from zenity
 ## Options :
-### admin		if sudo have been used to launch the function
 ### --function	function-to-kill
 ### --files		space-separated list of files to delete (last parameter)
 zenity_exit () {
-	# init
-	admin=0
 	# get params
 	while [ $# -gt 0 ]; do
 		case "$1" in
-		 "admin")
-			admin=1
-			;;
 		 "--function")
 			shift
 			function="$1"
@@ -70,12 +64,17 @@ zenity_exit () {
 		shift
 	done
 
-	# exit from lanched function
-	[ $admin -gt 0 ] && sudo -A pkill "${function}" || pkill "${function}"
+	# exit from launched function
+	[ -z $function ] || pkill "${function}"
 	# delete tmp files
 	for i in ${!files[@]}; do
-		[ -f "${files[$i]}" ] && rm "${file[$i]}"
+		[ -f "${files[$i]}" ] && rm "${files[$i]}"
 	done
+	return 0
+}
+# delete tmp file if exists
+delete_tmp () {
+	[ -f "${tmpFile}" ] && rm "${tmpFile}"
 	return 0
 }
 
@@ -213,15 +212,16 @@ if [ $SYNC -gt 0 ]; then
 		[ $? -gt 0 ] && exit 2
 	else
 		file="/tmp/syncing"
-		( touch "${file}" && sudo -A emerge --sync 2>&1 > "${tmpFile}" && rm "${file}" ) &
+		( touch "${file}" && emerge --sync 2>&1 > "${tmpFile}" && rm "${file}" ) &
 		while [ -f "${file}" ]
 		do
 			sleep .5
 			print_line
 		done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
 
-		[ $? -gt 0 ] && zenity_exit admin --function emerge --files "${file}"
+		[ $? -gt 0 ] && zenity_exit --function emerge --files "${file}"
 	fi
+	delete_tmp
 fi
 
 # Upgrade
@@ -232,7 +232,8 @@ if [ $X -gt 0 ]; then
 	# first check
 	file="/tmp/checking"
 	( touch "${file}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile}" && rm "${file}" ) &
-	dots=""			
+	sleep .5
+	dots=""
 	while [ -f "${file}" ]
 	do
 		sleep .5
@@ -244,6 +245,7 @@ if [ $X -gt 0 ]; then
 
 	if [ ! -s "${tmpFile}" ]; then
 		zenity --info --width 500 --title "Upgrade" --text "Your system is already up to date"
+		delete_tmp
 		exit 0
 
 	else
@@ -256,11 +258,11 @@ if [ $X -gt 0 ]; then
 			fi
 		fi
 
-		sed '/\*/d' "${tmpFile}" | zenity --width=500 --height=300 --text-info --title "Here are packages that need updates" || exit 1
-
+		sed '/\*/d' "${tmpFile}" | zenity --width=500 --height=300 --text-info --title "Here are packages that need updates" || delete_tmp && exit 1
+	
 		# finally emerge
 		file="/tmp/emerging"
-		( touch "${file}" && sudo -A emerge -quDN ${SET} 2>&1 > "${tmpFile}" && rm "${file}" ) &
+		( touch "${file}" && emerge -quDN ${SET} 2>&1 > "${tmpFile}" && rm "${file}" ) &
 		emerging=0		
 		installing=0
 		while [ -f "${file}" ]
@@ -280,8 +282,9 @@ if [ $X -gt 0 ]; then
 			echo "$percent"
 		done | zenity --progress --width=500 --title "Ugrading your system" --auto-close --text "Calculating upgrade..."
 
-		[ $? -gt 0 ] && zenity_exit admin --function emerge --files "${file}" "${tmpFile}" && exit 1
+		[ $? -gt 0 ] && zenity_exit --function emerge --files "${file}" "${tmpFile}" && exit 1
 	fi
+	delete_tmp
 
 # Std upgrade
 else
@@ -301,5 +304,4 @@ fi
 
 [ $X -gt 0 ] && zenity --info --width 500 --title "Upgrade" --text "Your system is now up to date"
 
-[ -f "${tmpFile}" ] && rm "${tmpFile}"
 exit 0
