@@ -6,7 +6,7 @@ if [ -f "${configPath}/shell-text.cnf" ]; then
 fi
 tmpFile="/tmp/upgrade-portage.log"
 
-# functions
+# Functions
 set_param () {
 	case "$1" in
 	 's'|'sync')
@@ -30,14 +30,63 @@ set_param () {
 return 0
 }
 
-# init
+# get last log line
+get_line () {
+	tail -1 "${tmpFile}"
+}
+# print line in zenity
+print_line () {
+	echo `get_line | grep -v "^$" | sed 's/^/# /' | sed 's/*//g'`
+}
+
+# exit from zenity
+## Options :
+### admin		if sudo have been used to launch the function
+### --function	function-to-kill
+### --files		space-separated list of files to delete (last parameter)
+zenity_exit () {
+	# init
+	admin=0
+	# get params
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		 "admin")
+			admin=1
+			;;
+		 "--function")
+			shift
+			function="$1"
+			;;
+		 "--files")
+			shift
+			files=( "$@" )
+			break 2
+			;;
+		 *)
+			echo "${bold}Unknown parameter $1${normal}"
+			;;
+		esac
+
+		shift
+	done
+
+	# exit from lanched function
+	[ $admin -gt 0 ] && sudo -A pkill "${function}" || pkill "${function}"
+	# delete tmp files
+	for i in ${!files[@]}; do
+		[ -f "${files[$i]}" ] && rm "${file[$i]}"
+	done
+	return 0
+}
+
+# Initialisation
 SET='@world'
 set_param 'x' 0
 set_param 'q' 0
 set_param 'v' 0
 set_param 's' 1
 
-# get parameters
+# Get parameters
 while [ "$#" -gt 0 ]; do
 	case "$1" in
           "-h"|"--help")
@@ -86,10 +135,10 @@ HELP
 	shift
 done
 
-# get repos locations
+# Get repos locations
 repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 
-# search for last sync timestamps
+# Search for last sync timestamps
 last=0
 text="Checking repositories..."
 echo -e "${green}${text}${normal}"
@@ -155,17 +204,6 @@ if [ $now -lt $last ]; then
 	fi
 fi
 
-# FUNCTIONS
-# get last log line
-get_line () {
-	tail -1 "${tmpFile}"
-}
-# print line in zenity
-print_line () {
-	echo `get_line | grep -v "^$" | sed 's/^/# /' | sed 's/*//g'`
-}
-
-
 # Sync
 if [ $SYNC -gt 0 ]; then
 	text="Syncing repositories..."
@@ -182,10 +220,7 @@ if [ $SYNC -gt 0 ]; then
 			print_line
 		done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
 
-		if [ $? -gt 0 ]; then 
-			sudo -A pkill emerge
-			[ -f "${file}" ] && rm "${file}"
-		fi
+		[ $? -gt 0 ] && zenity_exit admin --function emerge --files "${file}"
 	fi
 fi
 
@@ -194,6 +229,7 @@ text="Checking for upgrades..."
 echo -e "${green}${text}${normal}"
 if [ $X -gt 0 ]; then
 	
+	# first check
 	file="/tmp/checking"
 	( touch "${file}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile}" && rm "${file}" ) &
 	dots=""			
@@ -204,11 +240,7 @@ if [ $X -gt 0 ]; then
 		[ "$dots" = "..." ] && dots="" || dots="${dots}."
 	done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
 
-	if [ $? -gt 0 ]; then
-		pkill emerge
-		[ -f "${file}" ] && rm "${file}"
-		exit 1
-	fi
+	[ $? -gt 0 ] && zenity_exit --function emerge --files "${file}" "${tmpFile}" && exit 1
 
 	if [ ! -s "${tmpFile}" ]; then
 		zenity --info --width 500 --title "Upgrade" --text "Your system is already up to date"
@@ -216,6 +248,7 @@ if [ $X -gt 0 ]; then
 
 	else
 
+		# news item unread
 		news=`grep "news items need reading" "${tmpFile}" | sed 's/*//' `
 		if [ ! "$news" = "" ]; then
 			if zenity --width=500 --question --title "Warning" --text "<span color=\"red\">${news}</span> Do you want to read it now ?" --cancel-label "Non" --ok-label "Oui"; then
@@ -225,6 +258,7 @@ if [ $X -gt 0 ]; then
 
 		sed '/\*/d' "${tmpFile}" | zenity --width=500 --height=300 --text-info --title "Here are packages that need updates" || exit 1
 
+		# finally emerge
 		file="/tmp/emerging"
 		( touch "${file}" && sudo -A emerge -quDN ${SET} 2>&1 > "${tmpFile}" && rm "${file}" ) &
 		emerging=0		
@@ -245,14 +279,11 @@ if [ $X -gt 0 ]; then
 			[ -z $total ] || percent=$((100*($emerging+$installing)/$total))
 			echo "$percent"
 		done | zenity --progress --width=500 --title "Ugrading your system" --auto-close --text "Calculating upgrade..."
+
+		[ $? -gt 0 ] && zenity_exit admin --function emerge --files "${file}" "${tmpFile}" && exit 1
 	fi
 
-	if [ $? -gt 0 ]; then
-		sudo -A pkill emerge
-		[ -f "${file}" ] && rm "${file}"
-		exit 1
-	fi
-
+# Std upgrade
 else
 	[ $QUIET -eq 0 ] && QUIET='' || QUIET='q'
 	[ $VERBOSE -eq 0 ] && VERBOSE='' || VERBOSE='v'
@@ -270,5 +301,5 @@ fi
 
 [ $X -gt 0 ] && zenity --info --width 500 --title "Upgrade" --text "Your system is now up to date"
 
-rm "${tmpFile}"
+[ -f "${tmpFile}" ] && rm "${tmpFile}"
 exit 0
