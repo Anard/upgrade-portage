@@ -182,7 +182,7 @@ if [ $SYNC -gt 0 ]; then
 		done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
 
 		if [ $? -gt 0 ]; then 
-			sudo pkill emerge
+			sudo -A pkill emerge
 		fi
 	fi
 fi
@@ -219,22 +219,22 @@ if [ $X -gt 0 ]; then
 		do
 			sleep .5
 			print_line
-			emerging=`get_line | grep Emerging | awk -F[\(\)\ ] '{ print $3 }'`
-			if [ -n $emerging ]; then
-				if [ -z $total ]; then
-					total=`get_line | grep Emerging | awk -F[\(\)\ ] '{ print $5 }'`
-					[ -z $total ] || total=$((2*$total))
-				fi
-				[ $installing -lt $emerging ] && grep "Installing" "${tmpFile}" && installing=`get_line | grep Installing | awk -F[\(\)\ ] '{ print $3 }'`
-			fi
-			percent=$((100*($emerging+$installing)/$total))
+			new=`get_line | grep Emerging | awk -F[\(\)\ ] '{ print $4 }'`
+			[ "$new" = "" ] || emerging=$new
 
+			if [ -z $total ]; then
+				[ "$new" = "" ] || total=`grep Emerging "${tmpFile}" | awk -F[\(\)\ ] '{ print $6 }'`
+				[ -z $total ] || total=$((2*$total))
+			fi
+			new=`get_line | grep Installing | awk -F[\(\)\ ] '{ print $4 }'`
+			[ "$new" = "" ] || installing=$new
+			[ -z $total ] || percent=$((100*($emerging+$installing)/$total))
 			echo "$percent"
 		done | zenity --progress --width=500 --title "Ugrading your system" --auto-close --text "Calculating upgrade..."
 	fi
 
 	if [ $? -gt 0 ]; then
-		sudo pkill emerge
+		sudo -A pkill emerge
 		exit 1
 	fi
 
