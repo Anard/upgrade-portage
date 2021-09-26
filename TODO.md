@@ -6,9 +6,3 @@ Graphical interface via zenity
 - logo upgrade in zenity windows
 
 Check system used and use the correct way to upgrade system (portage, apt, rpm, pacman...)
-
-DEPENDENCIES
-- helpsh
-USE x :
-	zenity
-	askpass
