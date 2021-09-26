@@ -1,7 +1,6 @@
 Graphical interface via zenity
 - skip pretend & use ask
-- ask if read news if news are detected ...
-- Checklist via zenity to exclude some packages
+- Checklist via zenity to exclude some packages and for reading news
 - 'sleep' cmd uses most resources ?
 - logo upgrade in zenity windows
 
