@@ -174,8 +174,9 @@ if [ $SYNC -gt 0 ]; then
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
 	else
-		( touch /tmp/syncing && sudo -A emerge --sync 2>&1 > "${tmpFile}" && rm /tmp/syncing ) &
-		while [ -f /tmp/syncing ]
+		file="/tmp/syncing"
+		( touch "${file}" && sudo -A emerge --sync 2>&1 > "${tmpFile}" && rm "${file}" ) &
+		while [ -f "${file}" ]
 		do
 			sleep .5
 			print_line
@@ -183,6 +184,7 @@ if [ $SYNC -gt 0 ]; then
 
 		if [ $? -gt 0 ]; then 
 			sudo -A pkill emerge
+			[ -f "${file}" ] && rm "${file}"
 		fi
 	fi
 fi
@@ -192,9 +194,10 @@ text="Checking for upgrades..."
 echo -e "${green}${text}${normal}"
 if [ $X -gt 0 ]; then
 	
-	( touch /tmp/checking && emerge -pquDN ${SET} 2>&1 > "${tmpFile}" && rm /tmp/checking ) &
+	file="/tmp/checking"
+	( touch "${file}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile}" && rm "${file}" ) &
 	dots=""			
-	while [ -f /tmp/checking ]
+	while [ -f "${file}" ]
 	do
 		sleep .5
 		echo "# Calculating dependencies ${dots}"
@@ -203,19 +206,30 @@ if [ $X -gt 0 ]; then
 
 	if [ $? -gt 0 ]; then
 		pkill emerge
+		[ -f "${file}" ] && rm "${file}"
 		exit 1
 	fi
 
 	if [ ! -s "${tmpFile}" ]; then
 		zenity --info --width 500 --title "Upgrade" --text "Your system is already up to date"
 		exit 0
-	else
-		zenity --width=500 --height=300 --text-info --title "Here are packages that need updates" --filename "${tmpFile}" || exit 1
 
-		( touch /tmp/emerging && sudo -A emerge -quDN ${SET} 2>&1 > "${tmpFile}" && rm /tmp/emerging ) &
+	else
+
+		news=`grep "news items need reading" "${tmpFile}" | sed 's/*//' `
+		if [ ! "$news" = "" ]; then
+			if zenity --width=500 --question --title "Warning" --text "<span color=\"red\">${news}</span> Do you want to read it now ?" --cancel-label "Non" --ok-label "Oui"; then
+				eselect news read | zenity --text-info --width=500 --height=300 --title "News"
+			fi
+		fi
+
+		sed '/\*/d' "${tmpFile}" | zenity --width=500 --height=300 --text-info --title "Here are packages that need updates" || exit 1
+
+		file="/tmp/emerging"
+		( touch "${file}" && sudo -A emerge -quDN ${SET} 2>&1 > "${tmpFile}" && rm "${file}" ) &
 		emerging=0		
 		installing=0
-		while [ -f /tmp/emerging ]
+		while [ -f "${file}" ]
 		do
 			sleep .5
 			print_line
@@ -235,6 +249,7 @@ if [ $X -gt 0 ]; then
 
 	if [ $? -gt 0 ]; then
 		sudo -A pkill emerge
+		[ -f "${file}" ] && rm "${file}"
 		exit 1
 	fi
 
@@ -255,4 +270,5 @@ fi
 
 [ $X -gt 0 ] && zenity --info --width 500 --title "Upgrade" --text "Your system is now up to date"
 
+rm "${tmpFile}"
 exit 0
