@@ -155,51 +155,87 @@ if [ $now -lt $last ]; then
 	fi
 fi
 
-# sync
+# FUNCTIONS
+# get last log line
+get_line () {
+	tail -1 "${tmpFile}"
+}
+# print line in zenity
+print_line () {
+	echo `get_line | grep -v "^$" | sed 's/^/# /' | sed 's/*//g'`
+}
+
+
+# Sync
 if [ $SYNC -gt 0 ]; then
 	text="Syncing repositories..."
+	echo -e "${green}${text}${normal}"
 	if [ $X -eq 0 ]; then
-		echo -e "${green}${text}${normal}"
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
 	else
-		(
-			sudo -A emerge --sync 2>&1 > "${tmpFile}" &
-			while [ $(pgrep emerge) -gt 0 ]
-			do
-				sleep .5
-				echo `tail -n 1 "${tmpFile}" | grep -v "^$" | sed 's/^/# /'`
-			done
-		) | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text "" || sudo pkill emerge
+		( touch /tmp/syncing && sudo -A emerge --sync 2>&1 > "${tmpFile}" && rm /tmp/syncing ) &
+		while [ -f /tmp/syncing ]
+		do
+			sleep .5
+			print_line
+		done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
+
+		if [ $? -gt 0 ]; then 
+			sudo pkill emerge
+		fi
 	fi
 fi
 
-# upgrade
-
+# Upgrade
 text="Checking for upgrades..."
-[ $X -eq 0 ] && echo -e "${green}${text}${normal}" || echo "# ${text}"
+echo -e "${green}${text}${normal}"
 if [ $X -gt 0 ]; then
-	emerge -pquDN ${SET} > "${tmpFile}"
-	if [ "${OUTPUT}" = "" ]; then
-		echo "# Your system is already up to date"
-		echo "100"
+	
+	( touch /tmp/checking && emerge -pquDN ${SET} 2>&1 > "${tmpFile}" && rm /tmp/checking ) &
+	dots=""			
+	while [ -f /tmp/checking ]
+	do
+		sleep .5
+		echo "# Calculating dependencies ${dots}"
+		[ "$dots" = "..." ] && dots="" || dots="${dots}."
+	done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
+
+	if [ $? -gt 0 ]; then
+		pkill emerge
+		exit 1
+	fi
+
+	if [ ! -s "${tmpFile}" ]; then
+		zenity --info --width 500 --title "Upgrade" --text "Your system is already up to date"
 		exit 0
 	else
-		zenity --width=500 --question --title "Here are packages that need updates" --text `cat "${tmpFile}"`
-		if [ $? -eq 0 ]; then
-			(
-				sudo -A emerge -quDN ${SET} 2>&1 > "${tmpFile}" &
+		zenity --width=500 --height=300 --text-info --title "Here are packages that need updates" --filename "${tmpFile}" || exit 1
 
-				while pgrep emerge
-				do
-					sleep .5
-					echo `tail -n 1 "${tmpFile}" | grep -v "^$" | sed 's/^/# /'`
-					echo `tail -n 1 "${tmpFile}" | grep Emerging | awk -F[\(\)] '{ print $2 }' | sed 's/ of /*100\//' | bc`
-				done
-			) | zenity --progress --width=500 --title "Ugrading your system" --auto-close --text "${text}" || ( sudo pkill emerge && exit 1 )
+		( touch /tmp/emerging && sudo -A emerge -quDN ${SET} 2>&1 > "${tmpFile}" && rm /tmp/emerging ) &
+		emerging=0		
+		installing=0
+		while [ -f /tmp/emerging ]
+		do
+			sleep .5
+			print_line
+			emerging=`get_line | grep Emerging | awk -F[\(\)\ ] '{ print $3 }'`
+			if [ -n $emerging ]; then
+				if [ -z $total ]; then
+					total=`get_line | grep Emerging | awk -F[\(\)\ ] '{ print $5 }'`
+					[ -z $total ] || total=$((2*$total))
+				fi
+				[ $installing -lt $emerging ] && grep "Installing" "${tmpFile}" && installing=`get_line | grep Installing | awk -F[\(\)\ ] '{ print $3 }'`
+			fi
+			percent=$((100*($emerging+$installing)/$total))
 
-		else exit 1
-		fi
+			echo "$percent"
+		done | zenity --progress --width=500 --title "Ugrading your system" --auto-close --text "Calculating upgrade..."
+	fi
+
+	if [ $? -gt 0 ]; then
+		sudo pkill emerge
+		exit 1
 	fi
 
 else
@@ -211,7 +247,9 @@ fi
 if [ $? -gt 0 ]; then
 	text1="An error occurred on compilation time"
 	text2=", please check logs for more information"
-	[ $X -eq 0 ] && echo -e "${red}${text1}${normal}, ${text2}" || { echo "# <span color=\"red\">${text1}</span>${text2}"; echo "100"; }
+	if [ $X -eq 0 ]; then echo -e "${red}${text1}${normal}, ${text2}"
+	else zenity --info --width 500 --title "Error" echo "<span color=\"red\">${text1}</span>${text2}"
+	fi
 	exit 3
 fi
 

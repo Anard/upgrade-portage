@@ -3,7 +3,7 @@ Name=System upgrade
 Name[fr]=Mise à jour système
 GenericName=System upgrade
 GenericName[fr]=Mise à jour système
-Exec=upgrade -x | zenity --width=500 --progress --pulsate --title "Upgrading system"
+Exec=upgrade -x
 Terminal=false
 Type=Application
 Icon=aptdaemon-update
