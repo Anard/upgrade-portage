@@ -4,7 +4,8 @@ configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
 	source "${configPath}/shell-text.cnf"
 fi
-tmpFile="/tmp/upgrade-portage.log"
+logFile="/var/log/upgrade.log"
+declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['zenity']="/tmp/zenity-progress.log" )
 
 # Functions
 set_param () {
@@ -32,49 +33,31 @@ return 0
 
 # get last log line
 get_line () {
-	tail -1 "${tmpFile}"
+	tail -1 "${tmpFile["logs"]}"
 }
 # print line in zenity
 print_line () {
 	echo `get_line | grep -v "^$" | sed 's/^/# /' | sed 's/*//g'`
 }
 
-# exit from zenity
-## Options :
-### --function	function-to-kill
-### --files		space-separated list of files to delete (last parameter)
-zenity_exit () {
+# kill functions and delete tmp files
+## prepare_for_exit [function-to-kill]
+prepare_for_exit () {
 	# get params
-	while [ $# -gt 0 ]; do
-		case "$1" in
-		 "--function")
-			shift
-			function="$1"
-			;;
-		 "--files")
-			shift
-			files=( "$@" )
-			break 2
-			;;
-		 *)
-			echo "${bold}Unknown parameter $1${normal}"
-			;;
-		esac
+	if [ $# -gt 0 ]; then
+		functions=( "$@" )
+	else functions=( )	
+	fi
 
-		shift
+	# kill launched function
+	for i in "${!functions[@]}"; do
+		echo "Canceled ${functions[$i]}" >> "${logFile}"
+		pkill "${functions[$i]}"
 	done
-
-	# exit from launched function
-	[ -z $function ] || pkill "${function}"
 	# delete tmp files
-	for i in ${!files[@]}; do
-		[ -f "${files[$i]}" ] && rm "${files[$i]}"
+	for i in ${!tmpFile[@]}; do
+		[ -f "${tmpFile[$i]}" ] && rm "${tmpFile[$i]}"
 	done
-	return 0
-}
-# delete tmp file if exists
-delete_tmp () {
-	[ -f "${tmpFile}" ] && rm "${tmpFile}"
 	return 0
 }
 
@@ -135,26 +118,34 @@ HELP
 done
 
 # Get repos locations
+echo >> "${logFile}"
+echo "### $(date) ###" >> "${logFile}"
 repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 
 # Search for last sync timestamps
 last=0
 text="Checking repositories..."
-echo -e "${green}${text}${normal}"
+echo -e "${green}${text}${normal}" && echo "${text}" >> "${logFile}"
 for i in "${!repos[@]}"; do
 	if [ -f "${repos[$i]}/Manifest" ]; then
 		time[$i]=$( date -d `grep TIMESTAMP "${repos[$i]}/Manifest" | cut -d ' ' -f2` "+%s" )
+		text="Last sync for ${repos[$i]##*/} is `date -d @${time[$i]}`"
+		echo "${text}" >> "${logFile}"
+		[ $QUIET -gt 0 ] && [ $VERBOSE -eq 0 ] || echo "${text}"
+
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
 			text1="Sync date for ${repos[$i]##*/} is newer than now"
 			text2=", please correct your local time"
+			echo "${text1}" >> "${logFile}"
 			[ $X -eq 0 ] &&	echo -e "${red}${text1}${normal}${text2}" || zenity --width=500 --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
-			echo "Exiting..."
+			echo "Exiting..." | tee -a "${logFile}"
 			exit 1
 		fi
 
-		[ $QUIET -gt 0 ] && [ $VERBOSE -eq 0 ] || echo "Last sync for ${repos[$i]##*/} is `date -d @${time[$i]}`"
 	else
-		[ $VERBOSE -eq 0 ] || echo "Unknown last sync for ${repos[$i]##*/}"
+		text="Unknown last sync for ${repos[$i]##*/}"
+		echo "${text}" >> "${logFile}"
+		[ $VERBOSE -eq 0 ] || echo "${text}"
 	fi
 done
 for i in "${!time[@]}"; do
@@ -201,71 +192,78 @@ if [ $now -lt $last ]; then
 		else SYNC=0
 		fi
 	fi
+	text="Last sync newer than 24h, "
+	[ $SYNC -eq 0 ] && echo "${text}skipping sync" >> "${logFile}" || echo "${text}forcing sync" >> "${logFile}"
 fi
 
 # Sync
 if [ $SYNC -gt 0 ]; then
 	text="Syncing repositories..."
-	echo -e "${green}${text}${normal}"
+	echo -e "${green}${text}${normal}" && echo "${text}" >> "${logFile}"
 	if [ $X -eq 0 ]; then
-		emerge --sync
+		emerge --sync | tee -a "${logFile}"
 		[ $? -gt 0 ] && exit 2
 	else
-		file="/tmp/syncing"
-		( touch "${file}" && emerge --sync 2>&1 > "${tmpFile}" && rm "${file}" ) &
-		while [ -f "${file}" ]
+		( touch "${tmpFile["zenity"]}" && emerge --sync 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+		sleep .5
+		while [ -f "${tmpFile["zenity"]}" ]
 		do
 			sleep .5
 			print_line
 		done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
 
-		[ $? -gt 0 ] && zenity_exit --function emerge --files "${file}"
+		[ $? -gt 0 ] && prepare_for_exit emerge
+		cat "${tmpFile["logs"]}" >> "${logFile}"
 	fi
-	delete_tmp
 fi
 
 # Upgrade
 text="Checking for upgrades..."
-echo -e "${green}${text}${normal}"
+echo -e "${green}${text}${normal}" && echo "${text}" >> "${logFile}"
 if [ $X -gt 0 ]; then
 	
 	# first check
-	file="/tmp/checking"
-	( touch "${file}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile}" && rm "${file}" ) &
+	( touch "${tmpFile["zenity"]}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 	sleep .5
 	dots=""
-	while [ -f "${file}" ]
+	while [ -f "${tmpFile["zenity"]}" ]
 	do
 		sleep .5
 		echo "# Calculating dependencies ${dots}"
 		[ "$dots" = "..." ] && dots="" || dots="${dots}."
 	done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
 
-	[ $? -gt 0 ] && zenity_exit --function emerge --files "${file}" "${tmpFile}" && exit 1
+	[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
+	cat "${tmpFile["logs"]}" >> "${logFile}"
 
-	if [ ! -s "${tmpFile}" ]; then
+	if [ ! -s "${tmpFile["logs"]}" ]; then
 		zenity --info --width 500 --title "Upgrade" --text "Your system is already up to date"
-		delete_tmp
-		exit 0
+		prepare_for_exit && exit 0
 
 	else
-
 		# news item unread
-		news=`grep "news items need reading" "${tmpFile}" | sed 's/*//' `
+		news=`grep "news items need reading" "${tmpFile["logs"]}" | sed 's/*//' `
 		if [ ! "$news" = "" ]; then
 			if zenity --width=500 --question --title "Warning" --text "<span color=\"red\">${news}</span> Do you want to read it now ?" --cancel-label "Non" --ok-label "Oui"; then
-				eselect news read | zenity --text-info --width=500 --height=300 --title "News"
+				eselect news read | zenity --text-info --width=500 --height=300 --title "News" | tee -a "${logFile}"
 			fi
 		fi
 
-		sed '/\*/d' "${tmpFile}" | zenity --width=500 --height=300 --text-info --title "Here are packages that need updates" || delete_tmp && exit 1
+		# remove news lines from output & ask
+		sed '/\*/d' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --text-info --title "Here are packages that need updates"
+		if [ "$?" -gt 0 ]; then
+			echo "Aborted" >> "${logFile}"
+			prepare_for_exit
+			exit 1
+		fi
 	
 		# finally emerge
-		file="/tmp/emerging"
-		( touch "${file}" && emerge -quDN ${SET} 2>&1 > "${tmpFile}" && rm "${file}" ) &
+		echo "Ugrading your system" >> "${logFile}"
+		( touch "${tmpFile["zenity"]}" && emerge -quDN ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+		sleep .5
 		emerging=0		
 		installing=0
-		while [ -f "${file}" ]
+		while [ -f "${tmpFile["zenity"]}" ]
 		do
 			sleep .5
 			print_line
@@ -273,7 +271,7 @@ if [ $X -gt 0 ]; then
 			[ "$new" = "" ] || emerging=$new
 
 			if [ -z $total ]; then
-				[ "$new" = "" ] || total=`grep Emerging "${tmpFile}" | awk -F[\(\)\ ] '{ print $6 }'`
+				[ "$new" = "" ] || total=`grep Emerging "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
 				[ -z $total ] || total=$((2*$total))
 			fi
 			new=`get_line | grep Installing | awk -F[\(\)\ ] '{ print $4 }'`
@@ -282,26 +280,82 @@ if [ $X -gt 0 ]; then
 			echo "$percent"
 		done | zenity --progress --width=500 --title "Ugrading your system" --auto-close --text "Calculating upgrade..."
 
-		[ $? -gt 0 ] && zenity_exit --function emerge --files "${file}" "${tmpFile}" && exit 1
+		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
+		cat "${tmpFile["logs"]}" >> "${logFile}"
 	fi
-	delete_tmp
 
-# Std upgrade
+# Standard upgrade
 else
 	[ $QUIET -eq 0 ] && QUIET='' || QUIET='q'
 	[ $VERBOSE -eq 0 ] && VERBOSE='' || VERBOSE='v'
-	emerge -a${QUIET}${VERBOSE}uDN ${SET}
+	emerge -a${QUIET}${VERBOSE}uDN ${SET} | tee -a "${logFile}"
 fi
 
 if [ $? -gt 0 ]; then
 	text1="An error occurred on compilation time"
-	text2=", please check logs for more information"
+	text2="please check logs for more information"
 	if [ $X -eq 0 ]; then echo -e "${red}${text1}${normal}, ${text2}"
-	else zenity --info --width 500 --title "Error" echo "<span color=\"red\">${text1}</span>${text2}"
+	else zenity --info --width 500 --title "Error" echo "<span color=\"red\">${text1}</span>, ${text2}"
 	fi
+	echo "${text1}, ${text2}" >> "${logFile}"
 	exit 3
 fi
 
-[ $X -gt 0 ] && zenity --info --width 500 --title "Upgrade" --text "Your system is now up to date"
+# Depclean
+text="Cleaning system..."
+echo -e "${green}${text}${normal}" && echo "${text}" >> "${logFile}"
+if [ $X -gt 0 ]; then
+	
+	# first check
+	( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+	sleep .5
+	dots=""
+	while [ -f "${tmpFile["zenity"]}" ]
+	do
+		sleep .5
+		echo "# Checking for obsolete packages ${dots}"
+		[ "$dots" = "..." ] && dots="" || dots="${dots}."
+	done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
+
+	[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
+	cat "${tmpFile["logs"]}" >> "${logFile}"
+
+	if [ -s "${tmpFile["logs"]}" ]; then
+
+		sed 's/\*//g' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --text-info --title "Here are packages that will be removed"
+		if [ "$?" -gt 0 ]; then
+			echo "Aborted" >> "${logFile}"
+			prepare_for_exit
+			exit 1
+		fi
+	
+		# finally clean
+		text="Cleaning your system"
+		echo "$(text}" >> "${logFile}"
+		( touch "${tmpFile["zenity"]}" && emerge -qc ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+		sleep .5
+		cleaning=0
+		while [ -f "${tmpFile["zenity"]}" ]
+		do
+			sleep .5
+			print_line
+			new=`get_line | grep Emerging | awk -F[\(\)\ ] '{ print $4 }'`
+			[ "$new" = "" ] || cleaning=$new
+
+			if [ -z $total ]; then
+				[ "$new" = "" ] || total=`grep Emerging "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
+			fi
+			[ -z $total ] || percent=$((100*$cleaning/$total))
+			echo "$percent"
+		done | zenity --progress --width=500 --title "${text}" --auto-close --text ""
+
+		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
+		cat "${tmpFile["logs"]}" >> "${logFile}"
+	fi
+
+# Finished
+text="Your system is now up to date"
+[ $X -gt 0 ] && zenity --info --width 500 --title "Upgrade" --text "${text}"
+echo "${text}" >> "${logFile}"
 
 exit 0
