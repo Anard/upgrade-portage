@@ -302,60 +302,62 @@ if [ $? -gt 0 ]; then
 fi
 
 # Depclean
-text="Cleaning system..."
-echo -e "${green}${text}${normal}" && echo "${text}" >> "${logFile}"
-if [ $X -gt 0 ]; then
-	
-	# first check
-	( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
-	sleep .5
-	dots=""
-	while [ -f "${tmpFile["zenity"]}" ]
-	do
+if [ "$SET" = "@world" ]; then
+	text="Cleaning system..."
+	echo -e "${green}${text}${normal}" && echo "${text}" >> "${logFile}"
+	if [ $X -gt 0 ]; then
+		
+		# first check
+		( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 		sleep .5
-		echo "# Checking for obsolete packages ${dots}"
-		[ "$dots" = "..." ] && dots="" || dots="${dots}."
-	done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
-
-	[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-	cat "${tmpFile["logs"]}" >> "${logFile}"
-
-	if [ -s "${tmpFile["logs"]}" ]; then
-
-		sed 's/\*//g' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --text-info --title "Here are packages that will be removed"
-		if [ "$?" -gt 0 ]; then
-			echo "Aborted" >> "${logFile}"
-			prepare_for_exit
-			exit 1
-		fi
-	
-		# finally clean
-		text="Cleaning your system"
-		echo "$(text}" >> "${logFile}"
-		( touch "${tmpFile["zenity"]}" && emerge -qc ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
-		sleep .5
-		cleaning=0
+		dots=""
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
 			sleep .5
-			print_line
-			new=`get_line | grep Emerging | awk -F[\(\)\ ] '{ print $4 }'`
-			[ "$new" = "" ] || cleaning=$new
-
-			if [ -z $total ]; then
-				[ "$new" = "" ] || total=`grep Emerging "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
-			fi
-			[ -z $total ] || percent=$((100*$cleaning/$total))
-			echo "$percent"
-		done | zenity --progress --width=500 --title "${text}" --auto-close --text ""
+			echo "# Checking for obsolete packages ${dots}"
+			[ "$dots" = "..." ] && dots="" || dots="${dots}."
+		done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 		cat "${tmpFile["logs"]}" >> "${logFile}"
-	fi
 
-# Standard cleaning
-else
-	emerge -a${QUIET}${VERBOSE}c | tee -a "${logFile}"
+		if [ -s "${tmpFile["logs"]}" ]; then
+
+			sed 's/\*//g' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --text-info --title "Here are packages that will be removed"
+			if [ "$?" -gt 0 ]; then
+				echo "Aborted" >> "${logFile}"
+				prepare_for_exit
+				exit 1
+			fi
+		
+			# finally clean
+			text="Cleaning your system"
+			echo "$(text}" >> "${logFile}"
+			( touch "${tmpFile["zenity"]}" && emerge -qc ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+			sleep .5
+			cleaning=0
+			while [ -f "${tmpFile["zenity"]}" ]
+			do
+				sleep .5
+				print_line
+				new=`get_line | grep "Unmerging (" | awk -F[\(\)\ ] '{ print $4 }'`
+				[ "$new" = "" ] || cleaning=$new
+
+				if [ -z $total ]; then
+					[ "$new" = "" ] || total=`grep "Unmerging (" "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
+				fi
+				[ -z $total ] || percent=$((100*$cleaning/$total))
+				echo "$percent"
+			done | zenity --progress --width=500 --title "${text}" --auto-close --text ""
+
+			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
+			cat "${tmpFile["logs"]}" >> "${logFile}"
+		fi
+
+	# Standard cleaning
+	else
+		emerge -a${QUIET}${VERBOSE}c | tee -a "${logFile}"
+	fi
 fi
 
 # Finished
