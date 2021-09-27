@@ -278,7 +278,7 @@ if [ $X -gt 0 ]; then
 			[ "$new" = "" ] || installing=$new
 			[ -z $total ] || percent=$((100*($emerging+$installing)/$total))
 			echo "$percent"
-		done | zenity --progress --width=500 --title "Ugrading your system" --auto-close --text "Calculating upgrade..."
+		done | zenity --progress --width=500 --title "Ugrading your system" --auto-close --text "Calculating upgrade ..."
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 		cat "${tmpFile["logs"]}" >> "${logFile}"
@@ -352,6 +352,11 @@ if [ $X -gt 0 ]; then
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 		cat "${tmpFile["logs"]}" >> "${logFile}"
 	fi
+
+# Standard cleaning
+else
+	emerge -a${QUIET}${VERBOSE}c | tee -a "${logFile}"
+fi
 
 # Finished
 text="Your system is now up to date"
