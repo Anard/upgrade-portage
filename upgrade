@@ -223,6 +223,8 @@ echo -e "${green}${text}${normal}" && echo "${text}" >> "${logFile}"
 if [ $X -gt 0 ]; then
 	
 	# first check
+	emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}" &
+
 	( touch "${tmpFile["zenity"]}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 	sleep .5
 	dots=""
@@ -324,7 +326,7 @@ if [ "$SET" = "@world" ]; then
 		if [ -s "${tmpFile["logs"]}" ]; then
 
 			sed 's/\*//g' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --text-info --title "Here are packages that will be removed"
-			if [ "$?" -gt 0 ]; then
+			if [ $? -gt 0 ]; then
 				echo "Aborted" >> "${logFile}"
 				prepare_for_exit
 				exit 1
@@ -332,7 +334,7 @@ if [ "$SET" = "@world" ]; then
 		
 			# finally clean
 			text="Cleaning your system"
-			echo "$(text}" >> "${logFile}"
+			echo "${text}" >> "${logFile}"
 			( touch "${tmpFile["zenity"]}" && emerge -qc ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 			sleep .5
 			cleaning=0
