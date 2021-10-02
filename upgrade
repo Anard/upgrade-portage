@@ -248,9 +248,6 @@ if [ $X -gt 0 ]; then
 			fi
 		fi
 
-		# Impossible to merge
-		if 
-
 		# remove news lines from output & ask
 		sed '/*/d' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --window-icon "${iconPath}" --text-info --title "Here are packages that need updates"
 		if [ "$?" -gt 0 ]; then

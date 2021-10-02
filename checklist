@@ -1,0 +1,4 @@
+Supprime les ligne qui ne contiennent pas de crochet et leur ajoute une ligne TRUE
+choix=( $(sed '/\[.*\]/!d' /tmp/test.log | sed 's/\[.*\]/TRUE\n/' | zenity --height 500 --list --checklist --column 'merge' --column 'package') )
+
+$choix est un tableau des paquets choisis
