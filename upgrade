@@ -204,7 +204,7 @@ if [ $SYNC -gt 0 ]; then
 		emerge --sync | tee -a "${logFile}"
 		[ $? -gt 0 ] && exit 2
 	else
-		( touch "${tmpFile["zenity"]}" && emerge --sync 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+		( touch "${tmpFile["zenity"]}" && emerge --sync 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
 		sleep .5
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
@@ -225,7 +225,7 @@ if [ $X -gt 0 ]; then
 	# first check
 	emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}" &
 
-	( touch "${tmpFile["zenity"]}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+	( touch "${tmpFile["zenity"]}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
 	sleep .5
 	dots=""
 	while [ -f "${tmpFile["zenity"]}" ]
@@ -261,7 +261,7 @@ if [ $X -gt 0 ]; then
 	
 		# finally emerge
 		echo "Ugrading your system" >> "${logFile}"
-		( touch "${tmpFile["zenity"]}" && emerge -quDN ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+		( touch "${tmpFile["zenity"]}" && emerge -quDN ${SET} 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
 		sleep .5
 		emerging=0		
 		installing=0
@@ -310,7 +310,7 @@ if [ "$SET" = "@world" ]; then
 	if [ $X -gt 0 ]; then
 		
 		# first check
-		( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+		( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
 		sleep .5
 		dots=""
 		while [ -f "${tmpFile["zenity"]}" ]
@@ -335,7 +335,7 @@ if [ "$SET" = "@world" ]; then
 			# finally clean
 			text="Cleaning your system"
 			echo "${text}" >> "${logFile}"
-			( touch "${tmpFile["zenity"]}" && emerge -qc ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+			( touch "${tmpFile["zenity"]}" && emerge -qc 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
 			sleep .5
 			cleaning=0
 			while [ -f "${tmpFile["zenity"]}" ]
