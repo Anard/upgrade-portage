@@ -4,6 +4,7 @@ configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
 	source "${configPath}/shell-text.cnf"
 fi
+iconPath="/usr/share/icons/hicolor/64x64/apps/upgrade-portage.png"
 declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['zenity']="/tmp/zenity-progress.log" )
 
 # Functions
@@ -134,7 +135,7 @@ for i in "${!repos[@]}"; do
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
 			text1="Sync date for ${repos[$i]##*/} is newer than now"
 			text2=", please correct your local time"
-			[ $X -eq 0 ] &&	echo -e "${red}${text1}${normal}${text2}" || zenity --width=500 --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
+			[ $X -eq 0 ] &&	echo -e "${red}${text1}${normal}${text2}" || zenity --width=500 --window-icon "$(iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
 			echo "Exiting..."
 			exit 1
 		fi
@@ -183,7 +184,7 @@ if [ $now -lt $last ]; then
 			esac
 		done
 	else
-		if zenity --width=300 --question --title "${text1}" --text "${text2}" --default-cancel; then
+		if zenity --width=300 --window-icon "$(iconPath}" --question --title "${text1}" --text "${text2}" --default-cancel; then
 			SYNC=1
 		else SYNC=0
 		fi
@@ -206,7 +207,7 @@ if [ $SYNC -gt 0 ]; then
 		do
 			sleep .5
 			print_line
-		done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
+		done | zenity --width=500 --window-icon "$(iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 
 		[ $? -gt 0 ] && prepare_for_exit emerge
 		cat "${tmpFile["logs"]}"
@@ -227,26 +228,26 @@ if [ $X -gt 0 ]; then
 		sleep .5
 		echo "# Calculating dependencies ${dots}"
 		[ "$dots" = "..." ] && dots="" || dots="${dots}."
-	done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
+	done | zenity --width=500 --window-icon "$(iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 
 	[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 	cat "${tmpFile["logs"]}"
 
 	if [ ! -s "${tmpFile["logs"]}" ]; then
-		zenity --info --width 500 --title "Upgrade" --text "Your system is already up to date"
+		zenity --width 500 --window-icon "$(iconPath}" --info --title "Upgrade" --text "Your system is already up to date"
 		prepare_for_exit && exit 0
 
 	else
 		# news item unread
 		news=`grep "news items need reading" "${tmpFile["logs"]}" | sed 's/*//' `
 		if [ ! "$news" = "" ]; then
-			if zenity --width=500 --question --title "Warning" --text "<span color=\"red\">${news}</span> Do you want to read it now ?" --cancel-label "Non" --ok-label "Oui"; then
-				eselect news read | zenity --text-info --width=500 --height=300 --title "News"
+			if zenity --width=500 --window-icon "$(iconPath}" --question --title "Warning" --text "<span color=\"red\">${news}</span> Do you want to read it now ?" --cancel-label "Non" --ok-label "Oui"; then
+				eselect news read | zenity --width=500 --window-icon "$(iconPath}" --text-info --height=300 --title "News"
 			fi
 		fi
 
 		# remove news lines from output & ask
-		sed '/\*/d' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --text-info --title "Here are packages that need updates"
+		sed '/\*/d' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --window-icon "$(iconPath}" --text-info --title "Here are packages that need updates"
 		if [ "$?" -gt 0 ]; then
 			echo "Aborted"
 			prepare_for_exit
@@ -274,7 +275,7 @@ if [ $X -gt 0 ]; then
 			[ "$new" = "" ] || installing=$new
 			[ -z $total ] || percent=$((100*($emerging+$installing)/$total))
 			echo "$percent"
-		done | zenity --progress --width=500 --title "Ugrading your system" --auto-close --text "Calculating upgrade ..."
+		done | zenity --width=500 --window-icon "$(iconPath}" --progress --title "Ugrading your system" --auto-close --text "Calculating upgrade ..."
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 		cat "${tmpFile["logs"]}"
@@ -291,7 +292,7 @@ if [ $? -gt 0 ]; then
 	text1="An error occurred on compilation time"
 	text2="please check logs for more information"
 	if [ $X -eq 0 ]; then echo -e "${red}${text1}${normal}, ${text2}"
-	else zenity --info --width 500 --title "Error" echo "<span color=\"red\">${text1}</span>, ${text2}"
+	else zenity --width 500 --window-icon "$(iconPath}" --info --title "Error" echo "<span color=\"red\">${text1}</span>, ${text2}"
 	fi
 	echo "${text1}, ${text2}"
 	exit 3
@@ -312,14 +313,14 @@ if [ "$SET" = "@world" ]; then
 			sleep .5
 			echo "# Checking for obsolete packages ${dots}"
 			[ "$dots" = "..." ] && dots="" || dots="${dots}."
-		done | zenity --progress --width=500 --title "${text}" --pulsate --auto-close --text ""
+		done | zenity --width=500 --window-icon "$(iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 		cat "${tmpFile["logs"]}"
 
 		if [ -s "${tmpFile["logs"]}" ]; then
 
-			sed 's/\*//g' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --text-info --title "Here are packages that will be removed"
+			sed 's/\*//g' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --window-icon "$(iconPath}" --text-info --title "Here are packages that will be removed"
 			if [ $? -gt 0 ]; then
 				echo "Aborted"
 				prepare_for_exit
@@ -344,7 +345,7 @@ if [ "$SET" = "@world" ]; then
 				fi
 				[ -z $total ] || percent=$((100*$cleaning/$total))
 				echo "$percent"
-			done | zenity --progress --width=500 --title "${text}" --auto-close --text ""
+			done | zenity --width=500 --window-icon "$(iconPath}" --progress --title "${text}" --auto-close --text ""
 
 			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 			cat "${tmpFile["logs"]}"
@@ -358,7 +359,7 @@ fi
 
 # Finished
 text="Your system is now up to date"
-[ $X -gt 0 ] && zenity --info --width 500 --title "Upgrade" --text "${text}"
+[ $X -gt 0 ] && zenity --width 500 --window-icon "$(iconPath}" --info --title "Upgrade" --text "${text}"
 echo "${text}"
 
 exit 0
