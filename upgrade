@@ -41,7 +41,7 @@ print_line () {
 }
 
 # kill functions and delete tmp files
-## prepare_for_exit [function-to-kill]
+## prepare_for_exit [function-to-kill] [...]
 prepare_for_exit () {
 	# get params
 	if [ $# -gt 0 ]; then
@@ -201,7 +201,7 @@ if [ $SYNC -gt 0 ]; then
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
 	else
-		( touch "${tmpFile["zenity"]}" && emerge --sync 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
+		( touch "${tmpFile["zenity"]}" && emerge --sync 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 		sleep .5
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
@@ -210,6 +210,7 @@ if [ $SYNC -gt 0 ]; then
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 
 		[ $? -gt 0 ] && prepare_for_exit emerge
+		[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while syncing, please check logs" && prepare_for_exit && exit 2
 		cat "${tmpFile["logs"]}"
 	fi
 fi
@@ -220,7 +221,7 @@ echo -e "${green}${text}${normal}"
 if [ $X -gt 0 ]; then
 	
 	# first check
-	( touch "${tmpFile["zenity"]}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
+	( touch "${tmpFile["zenity"]}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 	sleep .5
 	dots=""
 	while [ -f "${tmpFile["zenity"]}" ]
@@ -231,6 +232,7 @@ if [ $X -gt 0 ]; then
 	done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 
 	[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
+	[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while checking dependencies, please check logs" && prepare_for_exit && exit 3
 	cat "${tmpFile["logs"]}"
 
 	if [ ! -s "${tmpFile["logs"]}" ]; then
@@ -246,8 +248,11 @@ if [ $X -gt 0 ]; then
 			fi
 		fi
 
+		# Impossible to merge
+		if 
+
 		# remove news lines from output & ask
-		sed '/\*/d' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --window-icon "${iconPath}" --text-info --title "Here are packages that need updates"
+		sed '/*/d' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --window-icon "${iconPath}" --text-info --title "Here are packages that need updates"
 		if [ "$?" -gt 0 ]; then
 			echo "Aborted"
 			prepare_for_exit
@@ -256,7 +261,7 @@ if [ $X -gt 0 ]; then
 	
 		# finally emerge
 		echo "Ugrading your system..."
-		( touch "${tmpFile["zenity"]}" && emerge -quDN ${SET} 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
+		( touch "${tmpFile["zenity"]}" && emerge -quDN ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 		sleep .5
 		emerging=0		
 		installing=0
@@ -278,6 +283,7 @@ if [ $X -gt 0 ]; then
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "Ugrading your system" --auto-close --text "Calculating upgrade ..."
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
+		[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
 		cat "${tmpFile["logs"]}"
 	fi
 
@@ -295,7 +301,7 @@ if [ $? -gt 0 ]; then
 	else zenity --width 500 --window-icon "${iconPath}" --info --title "Error" echo "<span color=\"red\">${text1}</span>, ${text2}"
 	fi
 	echo "${text1}, ${text2}"
-	exit 3
+	exit 4
 fi
 
 # Depclean
@@ -305,7 +311,7 @@ if [ "$SET" = "@world" ]; then
 	if [ $X -gt 0 ]; then
 		
 		# first check
-		( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
+		( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 		sleep .5
 		dots=""
 		while [ -f "${tmpFile["zenity"]}" ]
@@ -320,7 +326,7 @@ if [ "$SET" = "@world" ]; then
 
 		if [ -s "${tmpFile["logs"]}" ]; then
 
-			sed 's/\*//g' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --window-icon "${iconPath}" --text-info --title "Here are packages that will be removed"
+			sed 's/*//' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --window-icon "${iconPath}" --text-info --title "Here are packages that will be removed"
 			if [ $? -gt 0 ]; then
 				echo "Aborted"
 				prepare_for_exit
@@ -330,7 +336,7 @@ if [ "$SET" = "@world" ]; then
 			# finally clean
 			text="Cleaning your system..."
 			echo "${text}"
-			( touch "${tmpFile["zenity"]}" && emerge -qc 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
+			( touch "${tmpFile["zenity"]}" && emerge -qc 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 			sleep .5
 			cleaning=0
 			while [ -f "${tmpFile["zenity"]}" ]
@@ -348,12 +354,13 @@ if [ "$SET" = "@world" ]; then
 			done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text ""
 
 			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
+			[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && prepare_for_exit && exit 5
 			cat "${tmpFile["logs"]}"
 		fi
 
 	# Standard cleaning
 	else
-		emerge -a${QUIET}${VERBOSE}c
+		emerge -a${QUIET}${VERBOSE}c || exit 5
 	fi
 fi
 
