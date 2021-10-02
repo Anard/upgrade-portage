@@ -6,5 +6,5 @@ GenericName[fr]=Mise à jour système
 Exec=sudo -A upgrade -x
 Terminal=false
 Type=Application
-Icon=aptdaemon-update
+Icon=upgrade-portage
 Categories=System;GTK;
