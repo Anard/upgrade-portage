@@ -3,5 +3,6 @@ Graphical interface via zenity
 - Checklist via zenity to exclude some packages and for reading news
 - 'sleep' cmd uses most resources ?
 - depclean (zenity messages & percentage)
+- checking tmp zenity file existence fails as if emerge fails, zenity doesn't stop (retry pgrep emerge ?)
 
 Check system used and use the correct way to upgrade system (portage, apt, rpm, pacman...)
