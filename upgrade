@@ -195,8 +195,8 @@ fi
 
 # Sync
 if [ $SYNC -gt 0 ]; then
-	text="Syncing repositories..."
-	echo -e "${green}${text}${normal}"
+	text="Syncing repositories"
+	echo -e "${green}${text}...${normal}"
 	if [ $X -eq 0 ]; then
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
@@ -216,8 +216,8 @@ if [ $SYNC -gt 0 ]; then
 fi
 
 # Upgrade
-text="Checking for upgrades..."
-echo -e "${green}${text}${normal}"
+text="Checking for upgrades"
+echo -e "${green}${text}...${normal}"
 if [ $X -gt 0 ]; then
 	
 	# first check
@@ -257,7 +257,8 @@ if [ $X -gt 0 ]; then
 		fi
 	
 		# finally emerge
-		echo "Ugrading your system..."
+		text="Upgrading your system"
+		echo -e "${green}${text}...${normal}"
 		( touch "${tmpFile["zenity"]}" && emerge -quDN ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 		sleep .5
 		emerging=0		
@@ -277,7 +278,7 @@ if [ $X -gt 0 ]; then
 			[ "$new" = "" ] || installing=$new
 			[ -z $total ] || percent=$((100*($emerging+$installing)/$total))
 			echo "$percent"
-		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "Ugrading your system" --auto-close --text "Calculating upgrade ..."
+		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text "Calculating upgrade ..."
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 		[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
@@ -303,8 +304,8 @@ fi
 
 # Depclean
 if [ "$SET" = "@world" ]; then
-	text="Cleaning system..."
-	echo -e "${green}${text}${normal}"
+	text="Preparing for cleaning"
+	echo -e "${green}${text}...${normal}"
 	if [ $X -gt 0 ]; then
 		
 		# first check
@@ -331,8 +332,8 @@ if [ "$SET" = "@world" ]; then
 			fi
 		
 			# finally clean
-			text="Cleaning your system..."
-			echo "${text}"
+			text="Cleaning your system"
+			echo "${green}${text}...${normal}"
 			( touch "${tmpFile["zenity"]}" && emerge -qc 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
 			sleep .5
 			cleaning=0
