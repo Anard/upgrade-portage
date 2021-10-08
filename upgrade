@@ -276,12 +276,12 @@ if [ $X -gt 0 ]; then
 			fi
 			new=`get_line | grep Installing | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || installing=$new
-			[ -z $total ] || percent=$((100*($emerging+$installing)/$total))
+			[ -z $total ] || percent=$((100*($emerging+$installing-1)/$total))
 			echo "$percent"
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text "Calculating upgrade ..."
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-		[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
+			[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
 		cat "${tmpFile["logs"]}"
 	fi
 
@@ -347,12 +347,12 @@ if [ "$SET" = "@world" ]; then
 				if [ -z $total ]; then
 					[ "$new" = "" ] || total=`grep "Unmerging (" "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
 				fi
-				[ -z $total ] || percent=$((100*$cleaning/$total))
+				[ -z $total ] || percent=$((100*($cleaning-1)/$total))
 				echo "$percent"
 			done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text ""
 
 			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-			[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && prepare_for_exit && exit 5
+			[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && exit 5
 			cat "${tmpFile["logs"]}"
 		fi
 
