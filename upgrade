@@ -211,7 +211,7 @@ if [ $SYNC -gt 0 ]; then
 			print_line
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 
-		[ $? -gt 0 ] && prepare_for_exit emerge
+		[ $? -gt 0 ] && prepare_for_exit rsync emerge
 		[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while syncing, please check logs" && prepare_for_exit && exit 2
 		cat "${tmpFile["logs"]}"
 	fi
