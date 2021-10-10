@@ -269,6 +269,7 @@ if [ $X -gt 0 ]; then
 		sleep .5
 		emerging=0		
 		installing=0
+		percent=0
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
 			sleep .5
@@ -357,6 +358,7 @@ if [ "$SET" = "@world" ]; then
 			( touch "${tmpFile["zenity"]}" && emerge -qvc 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
 			sleep .5
 			cleaning=0
+			percent=0
 			while [ -f "${tmpFile["zenity"]}" ]
 			do
 				sleep .5
