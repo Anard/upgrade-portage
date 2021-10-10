@@ -221,8 +221,16 @@ fi
 text="Checking for upgrades"
 echo -e "${green}${text}...${normal}"
 if [ $X -gt 0 ]; then
-	
-	# first check
+
+	# first check for news
+	news=$( emerge -q --check-news )
+	if [ "${news}" != "" ]; then
+		if zenity --width=500 --window-icon "${iconPath}" --question --title "Warning" --text "<span color=\"red\">${news} news items needs reading.</span> Do you want to read it now ?" --cancel-label "No" --ok-label "Yes"; then
+			eselect news read | zenity --width=500 --window-icon "${iconPath}" --text-info --height=300 --title "News"
+		fi
+	fi	
+
+	# next, check for upgrades
 	( touch "${tmpFile["zenity"]}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
 	sleep .5
 	dots=""
@@ -237,25 +245,35 @@ if [ $X -gt 0 ]; then
 	[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while checking dependencies, please check logs" && prepare_for_exit && exit 3
 	cat "${tmpFile["logs"]}"
 
+	# remove eventual news lines from output
+	sed '/*/d' "${tmpFile["logs"]}" > "${tmpFile["logs"]}"
+
 	if [ ! -s "${tmpFile["logs"]}" ]; then
 		zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "Your system is already up to date"
 		prepare_for_exit && exit 0
 
 	else
-		# news item unread
-		news=`grep "news items need reading" "${tmpFile["logs"]}" | sed 's/*//' `
-		if [ ! "$news" = "" ]; then
-			if zenity --width=500 --window-icon "${iconPath}" --question --title "Warning" --text "<span color=\"red\">${news}</span> Do you want to read it now ?" --cancel-label "Non" --ok-label "Oui"; then
-				eselect news read | zenity --width=500 --window-icon "${iconPath}" --text-info --height=300 --title "News"
-			fi
-		fi
-
-		# remove news lines from output & ask
-		sed '/*/d' "${tmpFile["logs"]}" | zenity --width=500 --height=300 --window-icon "${iconPath}" --text-info --title "Here are packages that need updates"
+		# list of all packages that would be merged
+		list=( $(sed -n 's/\[.*\]\(.*\)/\1/p' "${tmpFile["logs"]}" ) )
+		# prepare output and ask for final choice
+		choix=( $(sed -n 's/\[\(.*\)\]\(.*\)/TRUE\n\2\n\1/p' "${tmpFile["logs"]}" | zenity --width 500 --height 300 --window-icon "${iconFile}" --list --checklist --column 'merge' --column 'package' --column 'action' --separator ' ' --title "Here are packages that would be merged" --text "Uncheck packages you want to exclude" ) )
 		if [ "$?" -gt 0 ]; then
 			echo "Aborted"
 			prepare_for_exit
 			exit 1
+		fi
+
+		# get excluded packages list
+		exclude=""
+		if [[ "${list[@]}" != "${choix[@]}" ]]; then
+			j=0
+			for i in ${!list[@]}; do
+				if [[ "${choix[$j]}" == "${list[$i]}" ]]; then
+					j=$(( $j+1 ))
+				else
+					exclude+=" --exclude \"${list[$i]}\""
+				fi
+			done
 		fi
 	
 		# finally emerge
@@ -265,9 +283,9 @@ if [ $X -gt 0 ]; then
 		portage_log="/var/log/portage/elog/summary.log"
 		[ -f "${portage_log}" ] && last_line=$( wc -l < "${portage_log}" ) || last_line=0
 
-		( touch "${tmpFile["zenity"]}" && emerge -quDN ${SET} 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
+		( touch "${tmpFile["zenity"]}" && emerge -quDN ${exclude} ${SET} 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
 		sleep .5
-		emerging=0		
+		emerging=0
 		installing=0
 		percent=0
 		while [ -f "${tmpFile["zenity"]}" ]
@@ -288,9 +306,9 @@ if [ $X -gt 0 ]; then
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text "Calculating upgrade ..."
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-		# Get messages from emerging
-		#message is table of a new messages' lines
+		# Print messages from emerging
 		if [ -f "${portage_log}" ]; then
+			# $message is a table of a new messages lines
 			message=( $( grep -Fn '>>>' "${portage_log}" | awk -F: '{print $1}' ) )
 			for i in ${!message[@]}; do
 				if [ $last_line -ge ${message[$i]} ]; then continue; fi
