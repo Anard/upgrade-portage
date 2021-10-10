@@ -212,7 +212,7 @@ if [ $SYNC -gt 0 ]; then
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 
 		[ $? -gt 0 ] && prepare_for_exit rsync emerge
-		[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while syncing, please check logs" && prepare_for_exit && exit 2
+		[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while syncing, please check logs" && prepare_for_exit && exit 2
 		cat "${tmpFile["logs"]}"
 	fi
 fi
@@ -242,21 +242,31 @@ if [ $X -gt 0 ]; then
 	done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 
 	[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-	[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while checking dependencies, please check logs" && prepare_for_exit && exit 3
+	[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while checking dependencies, please check logs" && prepare_for_exit && exit 3
 	cat "${tmpFile["logs"]}"
 
 	# remove eventual news lines from output
-	sed '/*/d' "${tmpFile["logs"]}" > "${tmpFile["logs"]}"
-
+	sed -i '/*/d' "${tmpFile["logs"]}"
+	
 	if [ ! -s "${tmpFile["logs"]}" ]; then
 		zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "Your system is already up to date"
 		prepare_for_exit && exit 0
 
 	else
 		# list of all packages that would be merged
-		list=( $(sed -n 's/\[.*\]\(.*\)/\1/p' "${tmpFile["logs"]}" ) )
+		list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
 		# prepare output and ask for final choice
-		choix=( $(sed -n 's/\[\(.*\)\]\(.*\)/TRUE\n\2\n\1/p' "${tmpFile["logs"]}" | zenity --width 500 --height 300 --window-icon "${iconFile}" --list --checklist --column 'merge' --column 'package' --column 'action' --separator ' ' --title "Here are packages that would be merged" --text "Uncheck packages you want to exclude" ) )
+		for i in ${!list[@]}; do
+			version[$i]=$( echo ${list[$i]} | sed 's/[a-zA-Z\/_-]*//' )
+			package[$i]=$( echo ${list[$i]} | sed 's/\([a-zA-Z\/_-]*\).*/\1/' ) && package[$i]=${package[$i]%-}		
+			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d] -f1 )
+			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
+		done
+
+		choix=( $(
+			for i in ${!list[@]}; do
+				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}"
+			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "Here are packages that would be merged" --text "Uncheck packages you want to exclude" ) )
 		if [ "$?" -gt 0 ]; then
 			echo "Aborted"
 			prepare_for_exit
@@ -265,17 +275,17 @@ if [ $X -gt 0 ]; then
 
 		# get excluded packages list
 		exclude=""
-		if [[ "${list[@]}" != "${choix[@]}" ]]; then
+		if [[ "${package[@]}" != "${choix[@]}" ]]; then
 			j=0
 			for i in ${!list[@]}; do
-				if [[ "${choix[$j]}" == "${list[$i]}" ]]; then
+				if [[ "${choix[$j]}" == "${package[$i]}" ]]; then
 					j=$(( $j+1 ))
 				else
-					exclude+=" --exclude \"${list[$i]}\""
+					exclude+=" --exclude ${package[$i]}"
 				fi
 			done
 		fi
-	
+
 		# finally emerge
 		text="Upgrading your system"
 		echo -e "${green}${text}...${normal}"
@@ -317,11 +327,17 @@ if [ $X -gt 0 ]; then
 				start=$(( ${message[i]}+1 ))
 				[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
 				#print message
-				sed -n "${start},${end}p" "${portage_log}" | sed 's/^\(ERROR.*\)$/<span color="red">\1<\/span>' | sed 's/^\(\(WARN\)|\(QA\).*\)$/<span color="orange">\1<\/span>' | sed 's/^\(LOG.*\)$/<span color="green">\1<\/span>' | zenity --width 500 --height 300 --window-icon "${iconFile}" --text-info --title "Messages from ${package}" --text "${text}"
+				sed -n "${start},${end}p" "${portage_log}" | sed 's/^\(ERROR.*\)$/<span color="red">\1<\/span>' | sed 's/^\(\(WARN\)|\(QA\).*\)$/<span color="orange">\1<\/span>' | sed 's/^\(LOG.*\)$/<span color="green">\1<\/span>' | zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --title "Messages from ${package}" --text "${text}"
 			done
 		fi
-		[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
+		[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
 		cat "${tmpFile["logs"]}"
+
+		if [[ "${exclude}" != "" ]] || [[ ${SET} != "@world" ]]; then
+			text="Upgrade is finished"
+			zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}"
+			exit 0
+		fi
 	fi
 
 # Standard upgrade
@@ -392,7 +408,7 @@ if [ "$SET" = "@world" ]; then
 			done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text ""
 
 			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-			[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && exit 5
+			[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && exit 5
 			cat "${tmpFile["logs"]}"
 		fi
 
