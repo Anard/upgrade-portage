@@ -5,7 +5,10 @@ if [ -f "${configPath}/shell-text.cnf" ]; then
 	source "${configPath}/shell-text.cnf"
 fi
 iconPath="/usr/share/icons/hicolor/64x64/apps/upgrade-portage.png"
-declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['zenity']="/tmp/zenity-progress.log" )
+if [ ! -f "${iconPath}" ]; then
+	iconPath="`dirname \"$0\"`/upgrade-portage.png"
+fi
+declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['zenity']="/tmp/zenity-progress.log" ['result']="/tmp/portage-result" )
 
 # Functions
 set_param () {
@@ -118,7 +121,6 @@ HELP
 done
 
 # Get repos locations
-echo
 echo "### $(date) ###"
 repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 
@@ -201,7 +203,7 @@ if [ $SYNC -gt 0 ]; then
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
 	else
-		( touch "${tmpFile["zenity"]}" && emerge --sync 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+		( touch "${tmpFile["zenity"]}" && emerge --sync 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
 		sleep .5
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
@@ -210,7 +212,7 @@ if [ $SYNC -gt 0 ]; then
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 
 		[ $? -gt 0 ] && prepare_for_exit emerge
-		[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while syncing, please check logs" && prepare_for_exit && exit 2
+		[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while syncing, please check logs" && prepare_for_exit && exit 2
 		cat "${tmpFile["logs"]}"
 	fi
 fi
@@ -221,7 +223,7 @@ echo -e "${green}${text}...${normal}"
 if [ $X -gt 0 ]; then
 	
 	# first check
-	( touch "${tmpFile["zenity"]}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+	( touch "${tmpFile["zenity"]}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
 	sleep .5
 	dots=""
 	while [ -f "${tmpFile["zenity"]}" ]
@@ -232,7 +234,7 @@ if [ $X -gt 0 ]; then
 	done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 
 	[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-	[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while checking dependencies, please check logs" && prepare_for_exit && exit 3
+	[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while checking dependencies, please check logs" && prepare_for_exit && exit 3
 	cat "${tmpFile["logs"]}"
 
 	if [ ! -s "${tmpFile["logs"]}" ]; then
@@ -259,7 +261,11 @@ if [ $X -gt 0 ]; then
 		# finally emerge
 		text="Upgrading your system"
 		echo -e "${green}${text}...${normal}"
-		( touch "${tmpFile["zenity"]}" && emerge -quDN ${SET} 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+		# get portage log file size
+		portage_log="/var/log/portage/elog/summary.log"
+		[ -f "${portage_log}" ] && last_line=$( wc -l < "${portage_log}" ) || last_line=0
+
+		( touch "${tmpFile["zenity"]}" && emerge -quDN ${SET} 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
 		sleep .5
 		emerging=0		
 		installing=0
@@ -281,7 +287,21 @@ if [ $X -gt 0 ]; then
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text "Calculating upgrade ..."
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-		[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
+		# Get messages from emerging
+		#message is table of a new messages' lines
+		if [ -f "${portage_log}" ]; then
+			message=( $( grep -Fn '>>>' "${portage_log}" | awk -F: '{print $1}' ) )
+			for i in ${!message[@]}; do
+				if [ $last_line -ge ${message[$i]} ]; then continue; fi
+				#get package
+				package=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" )
+				start=$(( ${message[i]}+1 ))
+				[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
+				#print message
+				sed -n "${start},${end}p" "${portage_log}" | sed 's/^\(ERROR.*\)$/<span color="red">\1<\/span>' | sed 's/^\(\(WARN\)|\(QA\).*\)$/<span color="orange">\1<\/span>' | sed 's/^\(LOG.*\)$/<span color="green">\1<\/span>' | zenity --width 500 --height 300 --window-icon "${iconFile}" --text-info --title "Messages from ${package}" --text "${text}"
+			done
+		fi
+		[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
 		cat "${tmpFile["logs"]}"
 	fi
 
@@ -309,7 +329,7 @@ if [ "$SET" = "@world" ]; then
 	if [ $X -gt 0 ]; then
 		
 		# first check
-		( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+		( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
 		sleep .5
 		dots=""
 		while [ -f "${tmpFile["zenity"]}" ]
@@ -334,7 +354,7 @@ if [ "$SET" = "@world" ]; then
 			# finally clean
 			text="Cleaning your system"
 			echo "${green}${text}...${normal}"
-			( touch "${tmpFile["zenity"]}" && emerge -qc 2>&1 > "${tmpFile["logs"]}" && rm "${tmpFile["zenity"]}" ) &
+			( touch "${tmpFile["zenity"]}" && emerge -qvc 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
 			sleep .5
 			cleaning=0
 			while [ -f "${tmpFile["zenity"]}" ]
@@ -352,7 +372,7 @@ if [ "$SET" = "@world" ]; then
 			done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text ""
 
 			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-			[ -f "${tmpFile["zenity"]}" ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && exit 5
+			[ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconFile}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && exit 5
 			cat "${tmpFile["logs"]}"
 		fi
 
@@ -364,7 +384,7 @@ fi
 
 # Finished
 text="Your system is now up to date"
-[ $X -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}"
+[ $X -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}" && prepare_for_exit
 echo "${text}"
 
 exit 0
