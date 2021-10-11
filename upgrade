@@ -337,7 +337,7 @@ if [ $X -gt 0 ]; then
 				[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
 				#print message
 				text=$( sed -n "${start},${end}p" "${portage_log}" | sed 's/^\(ERROR.*\)$/<span color="red">\1<\/span>' | sed 's/^\(\(WARN\)|\(QA\).*\)$/<span color="orange">\1<\/span>' | sed 's/^\(LOG.*\)$/<span color="green">\1<\/span>' )
-				zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --title "Messages from ${package[$i]}" --text "${text}"
+				echo "${text}" | zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --title "Messages from ${package[$i]}"
 			done
 		fi
 		[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
