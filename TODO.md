@@ -6,4 +6,6 @@ Graphical interface via zenity
 - get colored/bold output from emerge to zenity
 - check portage messages display in zenity
 
+- Add webkit to zenity use flag needed
+
 Check system used and use the correct way to upgrade system (portage, apt, rpm, pacman...)

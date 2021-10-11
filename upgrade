@@ -329,15 +329,15 @@ if [ $X -gt 0 ]; then
 		if [ -f "${portage_log}" ]; then
 			# $message is a table of a new messages lines
 			message=( $( grep -Fn '>>>' "${portage_log}" | awk -F: '{print $1}' ) )
-			package=( $( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" ) )
 			for i in ${!message[@]}; do
 				if [ $last_line -ge ${message[$i]} ]; then continue; fi
 				#get package
+				package[$i]=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" )
 				start=$(( ${message[$i]}+1 ))
 				[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
 				#print message
-				text=$( sed -n "${start},${end}p" "${portage_log}" | sed 's/^\(ERROR.*\)$/<span color="red">\1<\/span>' | sed 's/^\(\(WARN\)|\(QA\).*\)$/<span color="orange">\1<\/span>' | sed 's/^\(LOG.*\)$/<span color="green">\1<\/span>' )
-				echo "${text}" | zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --title "Messages from ${package[$i]}"
+				sed -n "${start},${end}p" "${portage_log}" | sed 's/^\(ERROR.*\)$/<span color="red">\1<\/span>/' | sed 's/^\(WARN.*\)$/<span color="orange">\1<\/span>/' | sed 's/^\(LOG.*\)$/<span color="green">\1<\/span>/'
+				| zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --html --title "Messages from ${package[$i]}"
 			done
 		fi
 		[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
