@@ -36,11 +36,16 @@ return 0
 
 # get last log line
 get_line () {
-	tail -1 "${tmpFile["logs"]}"
+	if [ $# -gt 0 ]; then
+		grep "$1" "${tmpFile["logs"]}" | sed -n '$p'
+	else
+		grep -v "^$" "${tmpFile["logs"]}" | sed -n '$p'
+	fi
+#	tail -1 "${tmpFile["logs"]}"
 }
 # print line in zenity
 print_line () {
-	echo `get_line | grep -v "^$" | sed 's/^/# /' | sed 's/*//g'`
+	echo `grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed 's/*//g'`
 }
 
 # kill functions and delete tmp files
@@ -305,14 +310,14 @@ if [ $X -gt 0 ]; then
 		do
 			sleep .5
 			print_line
-			new=`get_line | grep Emerging | awk -F[\(\)\ ] '{ print $4 }'`
+			new=`get_line Emerging | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || emerging=$new
 
 			if [ -z $total ]; then
 				[ "$new" = "" ] || total=`grep Emerging "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
 				[ -z $total ] || total=$((2*$total))
 			fi
-			new=`get_line | grep Installing | awk -F[\(\)\ ] '{ print $4 }'`
+			new=`get_line Installing | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || installing=$new
 			[ -z $total ] || percent=$((100*($emerging+$installing-1)/$total))
 			echo "$percent"
@@ -426,7 +431,7 @@ if [ "$SET" = "@world" ]; then
 			do
 				sleep .5
 				print_line
-				new=`get_line | grep "Unmerging (" | awk -F[\(\)\ ] '{ print $4 }'`
+				new=`get_line "Unmerging (" | awk -F[\(\)\ ] '{ print $4 }'`
 				[ "$new" = "" ] || cleaning=$new
 
 				if [ -z $total ]; then
