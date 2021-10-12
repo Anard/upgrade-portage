@@ -125,6 +125,11 @@ HELP
 	shift
 done
 
+# Check if genlop exists
+if [ $X -gt 0 ]; then
+	type genlop &> /dev/null && ESTIMATE=1 || ESTIMATE=0
+fi
+
 # Get repos locations
 echo "### $(date) ###"
 repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
@@ -292,7 +297,64 @@ if [ $X -gt 0 ]; then
 				fi
 			done
 		fi
+
 		unset list package version action current
+
+		avg=0
+		nb=0
+		if [ $ESTIMATE -gt 0 ]; then
+			# estimate each time
+			for i in ${!choix[@]}; do
+				est=$( emerge -pu ${choix[$i]} | genlop -p | grep Estimated | cut -d' ' -f4, )
+				while [ ! -z $est ]; do
+					#test if number					
+					chk=${est%% *}
+					if [ $chk -eq $chk ] 2>/dev/null; then
+						mult=0
+						#find unit
+						while [ ! -z $est ] && [ $mult -eq 0 ]; do
+							#shift
+							est=${est#* }
+							unit=${est%% *}
+							case $unit in
+								^hour)
+								 mult=3600
+								 ;;
+								^minute)
+								 mult=60
+								 ;;
+								^second)
+								 mult=1
+								 ;;
+								*)
+								 ;;
+							esac
+						done
+						#calc
+						time[$i]=$(( $mult*$chk+${time[$i]} ))
+					fi
+					#shift
+					est=${est#* }
+				done
+			done
+			# get average times
+			for time in ${time[@]}; do
+				avg=$(( $avg+$time ))
+				nb=$(( $nb+1 ))
+			done
+		fi
+		if [ $nb -gt 0 ]; then
+			avg=$(( $avg/$nb ))
+		else
+			avg=10
+		fi
+		total=0
+		for i in ${!choix[@]}; do
+			[ -z ${time[$i]} ] && time[$i]=$avg
+			total=$(( $total+${time[$i]} ))			
+		done
+
+		unset choix
 
 		# finally emerge
 		text="Upgrading your system"
@@ -313,10 +375,6 @@ if [ $X -gt 0 ]; then
 			new=`get_line Emerging | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || emerging=$new
 
-			if [ -z $total ]; then
-				[ "$new" = "" ] || total=`grep Emerging "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
-				[ -z $total ] || total=$((2*$total))
-			fi
 			new=`get_line Installing | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || installing=$new
 			[ -z $total ] || percent=$((100*($emerging+$installing-1)/$total))
