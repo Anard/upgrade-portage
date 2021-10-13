@@ -300,11 +300,13 @@ if [ $X -gt 0 ]; then
 
 		unset list package version action current
 
-		avg=0
-		nb=0
+		avg=0	#average estimations
+		nb=0	#number of known packages
 		if [ $ESTIMATE -gt 0 ]; then
 			# estimate each time
 			for i in ${!choix[@]}; do
+				echo "# Estimating mere time for ${choix[$i]}"
+				echo $(( 100*${i}/${#choix[@]} ))
 				est=$( emerge -pu ${choix[$i]} | genlop -p | grep Estimated | cut -d' ' -f4, )
 				while [ ! -z $est ]; do
 					#test if number					
@@ -336,7 +338,7 @@ if [ $X -gt 0 ]; then
 					#shift
 					est=${est#* }
 				done
-			done
+			done | zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time" --text ""
 			# get average times
 			for time in ${time[@]}; do
 				avg=$(( $avg+$time ))
