@@ -261,7 +261,7 @@ if [ $X -gt 0 ]; then
 
 	else
 		# list of all packages that would be merged
-		list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
+		list=( $( sed '/^\[/!d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d] -f2 ) )
 		# prepare output and ask for final choice
 		for i in ${!list[@]}; do
 			package[$i]=${list[$i]%-[0-9]*}
@@ -270,10 +270,12 @@ if [ $X -gt 0 ]; then
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 		done
 
+		text="Uncheck packages you want to exclude\n"
+		text+=$( sed '/^\[/d' "${tmpFile["logs"]}" )
 		choix=( $(
 			for i in ${!list[@]}; do
 				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}"
-			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "Here are packages that would be merged" --text "Uncheck packages you want to exclude" ) )
+			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "Here are packages that would be merged" --text "${text}" ) )
 		if [ "$?" -gt 0 ]; then
 			echo "Aborted"
 			prepare_for_exit
