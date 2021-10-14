@@ -127,7 +127,7 @@ done
 
 # Check if genlop exists
 if [ $X -gt 0 ]; then
-	type genlop &> /dev/null && ESTIMATE=1 || ESTIMATE=0
+       type genlop &> /dev/null && ESTIMATE=1 || ESTIMATE=0
 fi
 
 # Get repos locations
@@ -255,9 +255,6 @@ if [ $X -gt 0 ]; then
 	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while checking dependencies, please check logs" && prepare_for_exit && exit 3
 	cat "${tmpFile["logs"]}"
 
-	# remove eventual news lines from output
-	sed -i '/*/d' "${tmpFile["logs"]}"
-	
 	if [ ! -s "${tmpFile["logs"]}" ]; then
 		text="Your system is already up to date"
 		zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}"
@@ -266,19 +263,21 @@ if [ $X -gt 0 ]; then
 
 	else
 		# list of all packages that would be merged
-		list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
+		list=( $( sed '/^\[/!d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d] -f2 ) )
 		# prepare output and ask for final choice
 		for i in ${!list[@]}; do
 			package[$i]=${list[$i]%-[0-9]*}
 			version[$i]=${list[$i]##*[a-z][A-Z]-}
-			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d] -f1 )
+			action[$i]=$( sed -n "$(( $i+1 ))" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 		done
 
+		text="Uncheck packages you want to exclude\n"
+		text+=$( sed '/^\[/d' "${tmpFile["logs"]}" )
 		choix=( $(
 			for i in ${!list[@]}; do
 				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}"
-			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "Here are packages that would be merged" --text "Uncheck packages you want to exclude" ) )
+			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "Here are packages that would be merged" --text "${text}" ) )
 		if [ "$?" -gt 0 ]; then
 			echo "Aborted"
 			prepare_for_exit
@@ -297,66 +296,11 @@ if [ $X -gt 0 ]; then
 				fi
 			done
 		fi
-
 		unset list package version action current
 
-		avg=0	#average estimations
-		nb=0	#number of known packages
-		if [ $ESTIMATE -gt 0 ]; then
-			# estimate each time
-			for i in ${!choix[@]}; do
-				echo "# Estimating mere time for ${choix[$i]}"
-				echo $(( 100*${i}/${#choix[@]} ))
-				est=$( emerge -pu ${choix[$i]} | genlop -p | grep Estimated | cut -d' ' -f4, )
-				while [ ! -z $est ]; do
-					#test if number					
-					chk=${est%% *}
-					if [ $chk -eq $chk ] 2>/dev/null; then
-						mult=0
-						#find unit
-						while [ ! -z $est ] && [ $mult -eq 0 ]; do
-							#shift
-							est=${est#* }
-							unit=${est%% *}
-							case $unit in
-								^hour)
-								 mult=3600
-								 ;;
-								^minute)
-								 mult=60
-								 ;;
-								^second)
-								 mult=1
-								 ;;
-								*)
-								 ;;
-							esac
-						done
-						#calc
-						time[$i]=$(( $mult*$chk+${time[$i]} ))
-					fi
-					#shift
-					est=${est#* }
-				done
-			done | zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time" --text ""
-			# get average times
-			for time in ${time[@]}; do
-				avg=$(( $avg+$time ))
-				nb=$(( $nb+1 ))
-			done
-		fi
-		if [ $nb -gt 0 ]; then
-			avg=$(( $avg/$nb ))
-		else
-			avg=10
-		fi
-		total=0
-		for i in ${!choix[@]}; do
-			[ -z ${time[$i]} ] && time[$i]=$avg
-			total=$(( $total+${time[$i]} ))			
-		done
 
-		unset choix
+
+
 
 		# finally emerge
 		text="Upgrading your system"
@@ -377,6 +321,10 @@ if [ $X -gt 0 ]; then
 			new=`get_line Emerging | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || emerging=$new
 
+			if [ -z $total ]; then
+				[ "$new" = "" ] || total=`grep Emerging "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
+				[ -z $total ] || total=$((2*$total))
+			fi
 			new=`get_line Installing | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || installing=$new
 			[ -z $total ] || percent=$((100*($emerging+$installing-1)/$total))
