@@ -230,6 +230,14 @@ if [ $X -gt 0 ]; then
 	# first check for news
 	news=$( emerge -q --check-news )
 	if [ ! -z "${news}" ]; then
+		eselect news list | sed '/ N /!d' > "${tmpFile["logs"]}"
+		index=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f1) )
+		for i in ${!index[@]}; do
+			date[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | awk '{print $3}' )
+			title[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | awk '{for (i=4; i<=NF; i++) printf "%s " ,$i }' )
+		done
+
+
 		if zenity --width=500 --window-icon "${iconPath}" --question --title "Warning" --text "<span color=\"red\">${news} news items needs reading.</span> Do you want to read it now ?" --cancel-label "No" --ok-label "Yes"; then
 			eselect news read | zenity --width=500 --window-icon "${iconPath}" --text-info --height=300 --title "News"
 		fi
