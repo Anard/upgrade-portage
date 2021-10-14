@@ -298,9 +298,68 @@ if [ $X -gt 0 ]; then
 		fi
 		unset list package version action current
 
-
-
-
+		# Build time estimation
+		avg=0   #average estimations
+		nb=0    #number of known packages
+		if [ $ESTIMATE -gt 0 ]; then
+			# estimate each time
+			for i in ${!choix[@]}; do
+				echo "# Estimating merge time for ${choix[$i]}"
+				echo $(( 100*${i}/${#choix[@]} ))
+				time[$i]=0
+				# ?????
+				est=$( emerge -pu ${choix[$i]} | genlop -p | grep Estimated | cut -d' ' -f4, )
+				while [ ! -z $est ]; do
+					#test if number
+					chk=${est%% *}
+					if [ $chk -eq $chk ] 2>/dev/null; then
+						mult=0
+						#find unit
+						while [ ! -z $est ] && [ $mult -eq 0 ]; do
+							#shift
+							est=${est#* }
+							unit=${est%% *}
+							case $unit in
+							 ^hour)
+							 	mult=3600
+							 	;;
+							 ^minute)
+							 	mult=60
+							 	;;
+							 ^second)
+							 	mult=1
+							 	;;
+							 *)
+							 	;;
+							esac
+						done
+						#calc
+						time[$i]=$(( $mult*$chk+${time[$i]} ))
+					fi
+					#shift
+					est=${est#* }
+				done
+			done | zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time" --text ""
+			
+			# get average times
+			nb=${#time[@]}
+			for time in ${time[@]}; do
+				avg=$(( $avg+$time ))
+			done
+		fi
+		
+		if [ $nb -gt 0 ]; then
+			avg=$(( $avg/$nb ))
+		else avg=10
+		fi
+		
+		total_time=0
+		for i in ${!choix[@]}; do
+			[ -z ${time[$i]} ] && time[$i]=$avg
+			total_time=$(( $total+${time[$i]} ))
+		done
+		
+		unset choix
 
 		# finally emerge
 		text="Upgrading your system"
@@ -321,13 +380,20 @@ if [ $X -gt 0 ]; then
 			new=`get_line Emerging | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || emerging=$new
 
-			if [ -z $total ]; then
-				[ "$new" = "" ] || total=`grep Emerging "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
-				[ -z $total ] || total=$((2*$total))
-			fi
+#			if [ -z $total ]; then
+#				[ "$new" = "" ] || total=`grep Emerging "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
+#				[ -z $total ] || total=$((2*$total))
+#			fi
 			new=`get_line Installing | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || installing=$new
-			[ -z $total ] || percent=$((100*($emerging+$installing-1)/$total))
+#			[ -z $total ] || percent=$((100*($emerging+$installing-1)/$total))
+
+			if [ $emerging -gt 0 ]; then
+				[ $emerging -gt $installing ] && mult=8 || mult=10
+				percent=$(( 10*${mult}*${time[$emerging-1]}/${total} ))
+			else percent=0
+			fi
+
 			echo "$percent"
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text "Calculating upgrade ..."
 
