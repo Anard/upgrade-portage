@@ -74,7 +74,8 @@ SET='@world'
 set_param 'x' 0
 set_param 'q' 0
 set_param 'v' 0
-set_param 's' 1
+set_param 's' 1;
+UPGRADE_NEEDED=1
 
 # Get parameters
 while [ "$#" -gt 0 ]; do
@@ -266,10 +267,7 @@ if [ $X -gt 0 ]; then
 	sed -i '/*/d' "${tmpFile["logs"]}"
 	
 	if [ ! -s "${tmpFile["logs"]}" ]; then
-		text="Your system is already up to date"
-		zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}"
-		echo "${text}"
-		prepare_for_exit # && exit 0
+		prepare_for_exit && UPGRADE_NEEDED=0
 
 	else
 		# list of all packages that would be merged
@@ -459,7 +457,11 @@ if [ "$SET" = "@world" ]; then
 
 			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 			[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && exit 5
-			cat "${tmpFile["logs"]}"
+			if [ ! -s "${tmpFile["logs"]}" ] && [ $UPGRADE_NEEDED -gt 0 ]; then
+				UPGRADE_NEEDED=0
+			else
+				UPGRADE_NEEDED=1 && cat "${tmpFile["logs"]}"
+			fi
 		fi
 
 	# Standard cleaning
@@ -469,7 +471,11 @@ if [ "$SET" = "@world" ]; then
 fi
 
 # Finished
-text="Your system is now up to date"
+if [ $UPGRADE_NEEDED -eq 0 ]; then
+	text="Your system is already up to date"
+else
+	text="Your system is now up to date"
+fi
 [ $X -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}" && prepare_for_exit
 echo "${text}"
 
