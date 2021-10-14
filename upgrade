@@ -353,12 +353,14 @@ if [ $X -gt 0 ]; then
 		else avg=10
 		fi
 		
-		total_time=0
+		total=0
 		for i in ${!choix[@]}; do
 			[ -z ${time[$i]} ] && time[$i]=$avg
-			total_time=$(( $total+${time[$i]} ))
+			total=$(( $total+${time[$i]} ))
 		done
 		
+		echo ${time[@]} ${nb} ${avg} ${total}
+				
 		unset choix
 
 		# finally emerge
