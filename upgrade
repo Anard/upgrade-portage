@@ -318,7 +318,8 @@ if [ $X -gt 0 ]; then
 				echo $(( 100*${i}/${#choix[@]} ))
 				time[$i]=0
 				# ?????
-				est=$( emerge -pu ${choix[$i]} | genlop -p | grep Estimated | cut -d' ' -f4, )
+				est=$( emerge -pu ${choix[$i]} | genlop -p | grep Estimated | cut -d' ' -f4- )
+
 				while [ ! -z $est ]; do
 					#test if number
 					chk=${est%% *}
