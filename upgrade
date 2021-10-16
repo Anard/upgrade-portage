@@ -315,20 +315,16 @@ if [ $X -gt 0 ]; then
 			# estimate each time
 			for i in ${!choix[@]}; do
 				echo "# Estimating merge time for ${choix[$i]}"
-				echo $(( 100*${i}/${#choix[@]} ))
+				#echo $(( 100*${i}/${#choix[@]} ))
 				time[$i]=0
-				# ?????
 				est=( $( genlop -nt ${choix[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
-				echo "genlop = ${est[@]}"
-
+				
 				j=0
 				while [ $j -lt ${#est[@]} ]; do
 					chk=${est[$j]}
 					#test if number
-					echo "check $chk"
 					if [ $chk -eq $chk ] 2>/dev/null; then
 						unit=${est[$j+1]}
-						echo "unit : $unit"
 						#find unit
 						case $unit in
 						 day*)
@@ -347,7 +343,6 @@ if [ $X -gt 0 ]; then
 							mult=0
 						 	;;
 						esac
-						echo "mult : $mult"
 
 						#calc
 						time[$i]=$(( ${time[$i]} + $mult*$chk ))
@@ -358,7 +353,7 @@ if [ $X -gt 0 ]; then
 					j=$(( $j+1 ))
 				done
 
-			done | zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time" --text ""
+			done #| zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time" --text ""
 			
 			# get average times
 			nb=${#time[@]}
@@ -374,12 +369,10 @@ if [ $X -gt 0 ]; then
 		
 		total=0
 		for i in ${!choix[@]}; do
-			[ -z ${time[$i]} ] && time[$i]=$avg
+			[ ${time[$i]} -eq 0 ] && time[$i]=$avg
 			total=$(( $total+${time[$i]} ))
 		done
 		
-		echo ${time[@]} ${nb} ${avg} ${total}
-				
 		unset choix
 
 		# finally emerge
