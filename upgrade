@@ -278,7 +278,7 @@ if [ $X -gt 0 ]; then
 		for i in ${!list[@]}; do
 			package[$i]=${list[$i]%-[0-9]*}
 			version[$i]=${list[$i]##*[a-z][A-Z]-}
-			action[$i]=$( sed -n "$(( $i+1 ))" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
+			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 		done
 
@@ -318,38 +318,46 @@ if [ $X -gt 0 ]; then
 				echo $(( 100*${i}/${#choix[@]} ))
 				time[$i]=0
 				# ?????
-				est=$( emerge -pu ${choix[$i]} | genlop -p | grep Estimated | cut -d' ' -f4- )
+				est=( $( genlop -nt ${choix[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
+				echo "genlop = ${est[@]}"
 
-				while [ ! -z $est ]; do
+				j=0
+				while [ $j -lt ${#est[@]} ]; do
+					chk=${est[$j]}
 					#test if number
-					chk=${est%% *}
+					echo "check $chk"
 					if [ $chk -eq $chk ] 2>/dev/null; then
-						mult=0
+						unit=${est[$j+1]}
+						echo "unit : $unit"
 						#find unit
-						while [ ! -z $est ] && [ $mult -eq 0 ]; do
-							#shift
-							est=${est#* }
-							unit=${est%% *}
-							case $unit in
-							 ^hour)
-							 	mult=3600
-							 	;;
-							 ^minute)
-							 	mult=60
-							 	;;
-							 ^second)
-							 	mult=1
-							 	;;
-							 *)
-							 	;;
-							esac
-						done
+						case $unit in
+						 day*)
+							mult=86400
+							;;
+						 hour*)
+						 	mult=3600
+						 	;;
+						 minute*)
+						 	mult=60
+						 	;;
+						 second*)
+						 	mult=1
+						 	;;
+						 *)
+							mult=0
+						 	;;
+						esac
+						echo "mult : $mult"
+
 						#calc
-						time[$i]=$(( $mult*$chk+${time[$i]} ))
+						time[$i]=$(( ${time[$i]} + $mult*$chk ))
+						#shift
+						j=$(( $j+1 ))
 					fi
 					#shift
-					est=${est#* }
+					j=$(( $j+1 ))
 				done
+
 			done | zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time" --text ""
 			
 			# get average times
@@ -454,7 +462,7 @@ else
 fi
 
 # Depclean
-if [ "$SET" = "@world" ]; then
+if [ -z $exclude ] && [ "$SET" = "@world" ]; then
 	text="Preparing for cleaning"
 	echo -e "${green}${text}...${normal}"
 	if [ $X -gt 0 ]; then
