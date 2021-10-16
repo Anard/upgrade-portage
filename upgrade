@@ -317,8 +317,8 @@ if [ $X -gt 0 ]; then
 				echo "# Estimating merge time for ${choix[$i]}"
 				#echo $(( 100*${i}/${#choix[@]} ))
 				time[$i]=0
-				est=( $( genlop -nt ${choix[$i]} -f /var/log/emerge.log-20211003.gz | sed -n 's/ *merge time: //p' | tail -1 ) )
-#				est=( $( genlop -nt ${choix[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
+#				est=( $( genlop -nt ${choix[$i]} -f /var/log/emerge.log-20211003.gz | sed -n 's/ *merge time: //p' | tail -1 ) )
+				est=( $( genlop -nt ${choix[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
 				
 				j=0
 				while [ $j -lt ${#est[@]} ]; do
@@ -388,22 +388,27 @@ if [ $X -gt 0 ]; then
 		emerging=0
 		installing=0
 		percent=0
+		echo ${time[@]}
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
 			sleep .5
-			print_line
-			new=`get_line Emerging | awk -F[\(\)\ ] '{ print $4 }'`
-			[ "$new" = "" ] || emerging=$new
+#			print_line
+			edited=0
+			new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
+			[ ! -z $new ] && [ $new -gt $emerging ] && emerging=$new && edited=1
 
-			new=`get_line Installing | awk -F[\(\)\ ] '{ print $4 }'`
-			[ "$new" = "" ] || installing=$new
+			new=$( get_line Installing | awk -F[\(\)\ ] '{ print $4 }' )
+			[ ! -z $new ] && [ $new -gt $installing ] && installing=$new && edited=1
 
-			if [ $installing -gt 0 ]; then
+			if [ $edited -gt 0 ]; then
+				print_line
+
 				elapsed=0
 				for i in ${time[@]:0:$installing}; do
+					[ $installing -eq $emerging ] && i=$(( 8*$i/10 ))
 					elapsed=$(( $elapsed + $i ))
 				done
-				[ $installing -lt $emerging ] && elapsed=$(( $elapsed + 8*${time[$emerging-1]}/10 ))
+
 				percent=$(( 100*${elapsed}/${total} ))
 			fi
 
