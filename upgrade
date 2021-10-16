@@ -215,7 +215,7 @@ if [ $SYNC -gt 0 ]; then
 		[ $? -gt 0 ] && exit 2
 	else
 		( touch "${tmpFile["zenity"]}" && emerge --sync 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
-		sleep .5
+#		sleep .5
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
 			sleep .5
