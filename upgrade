@@ -400,12 +400,14 @@ if [ $X -gt 0 ]; then
 #			fi
 			new=`get_line Installing | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || installing=$new
-#			[ -z $total ] || percent=$((100*($emerging+$installing-1)/$total))
 
-			if [ $emerging -gt 0 ]; then
-				[ $emerging -gt $installing ] && mult=8 || mult=10
-				percent=$(( 10*${mult}*${time[$emerging-1]}/${total} ))
-			else percent=0
+			if [ $installing -gt 0 ]; then
+				elapsed=0
+				for i in ${time[@]:0:$installing-1}; do
+					elapsed=$(( $elapsed + ${time[$i]} ))
+				done
+				[ $installing -lt $emerging ] && elapsed=$(( $elapsed + 8*${time[$emerging-1]}/10 ))
+				percent=$(( 100*${elapsed}/${total} ))
 			fi
 
 			echo "$percent"
