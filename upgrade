@@ -310,14 +310,15 @@ if [ $X -gt 0 ]; then
 
 		# Build time estimation
 		avg=0   #average estimations
-		nb=0    #number of known packages
+		nb=0    #number of found packages
 		if [ $ESTIMATE -gt 0 ]; then
 			# estimate each time
 			for i in ${!choix[@]}; do
 				echo "# Estimating merge time for ${choix[$i]}"
 				#echo $(( 100*${i}/${#choix[@]} ))
 				time[$i]=0
-				est=( $( genlop -nt ${choix[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
+				est=( $( genlop -nt ${choix[$i]} -f /var/log/emerge.log-20211003.gz | sed -n 's/ *merge time: //p' | tail -1 ) )
+#				est=( $( genlop -nt ${choix[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
 				
 				j=0
 				while [ $j -lt ${#est[@]} ]; do
@@ -356,9 +357,9 @@ if [ $X -gt 0 ]; then
 			done #| zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time" --text ""
 			
 			# get average times
-			nb=${#time[@]}
-			for time in ${time[@]}; do
-				avg=$(( $avg+$time ))
+			for estimated in ${time[@]}; do
+				avg=$(( $avg+$estimated ))
+				[ $estimated -gt 0 ] && nb=$(( $nb+1 ))
 			done
 		fi
 		
@@ -394,17 +395,13 @@ if [ $X -gt 0 ]; then
 			new=`get_line Emerging | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || emerging=$new
 
-#			if [ -z $total ]; then
-#				[ "$new" = "" ] || total=`grep Emerging "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
-#				[ -z $total ] || total=$((2*$total))
-#			fi
 			new=`get_line Installing | awk -F[\(\)\ ] '{ print $4 }'`
 			[ "$new" = "" ] || installing=$new
 
 			if [ $installing -gt 0 ]; then
 				elapsed=0
-				for i in ${time[@]:0:$installing-1}; do
-					elapsed=$(( $elapsed + ${time[$i]} ))
+				for i in ${time[@]:0:$installing}; do
+					elapsed=$(( $elapsed + $i ))
 				done
 				[ $installing -lt $emerging ] && elapsed=$(( $elapsed + 8*${time[$emerging-1]}/10 ))
 				percent=$(( 100*${elapsed}/${total} ))
