@@ -339,16 +339,13 @@ if [ $X -gt 0 ]; then
 			fi
 		done
 		
-		# average/total time
+		# average time
 		if [ $nb -gt 0 ] && [ $avg -gt 0 ]; then
 			avg=$(( $avg/$nb ))
 		else avg=10
 		fi
-		
-		total=0
 		for i in ${!list[@]}; do
 			[ ${time[$i]} -eq 0 ] && time[$i]=$avg && time_h[$i]="???"
-			total=$(( $total+${time[$i]} ))
 		done
 		
 		text="Uncheck packages you want to exclude\n"
@@ -387,6 +384,12 @@ if [ $X -gt 0 ]; then
 			done
 		fi
 		unset list package version action current time_h
+
+		# total time
+		total=0
+		for i in ${!choix[@]}; do
+			total=$(( $total+${time[$i]} ))
+		done
 
 		# finally emerge
 		text="Upgrading your system"
