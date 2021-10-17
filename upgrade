@@ -341,15 +341,16 @@ if [ $X -gt 0 ]; then
 		avg=0   #average estimations
 		nb=0    #number of found packages
 		for i in ${!list[@]}; do
-			time[$i]=$( sed -n "$(( 2*$i ))p" "${tmpFile["result"]}" )
+			time[$i]=$( sed -n "$(( 2*$i+1 ))p" "${tmpFile["result"]}" )
 			[ -z ${time[$i]} ] && time[$i]=0
-			[ time[$i] -gt 0] && time_h[$i]=$( sed -n "$(( 2*$i+1 ))p" "${tmpFile["result"]}" ) || time_h='???'
+			[ time[$i] -gt 0] && time_h[$i]=$( sed -n "$(( 2*$i+2 ))p" "${tmpFile["result"]}" ) || time_h='???'
 			# prepare average time
 			if [ ${time[$i]} -gt 0 ]; then
 				avg=$(( $avg+${time[$i]} ))
 				nb=$(( $nb+1 ))
 			fi
 		done
+		rm "${tmpFile["result"]}"
 		
 		# average time
 		if [ $nb -gt 0 ] && [ $avg -gt 0 ]; then
