@@ -405,7 +405,7 @@ if [ $X -gt 0 ]; then
 		sleep 1
 		emerging=0; installing=0
 		percent=0; elapsed=0;
-		elapsed_h=( ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
+		declare -A elapsed_h=( ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
 		dots=""
 		
 		while [ -f "${tmpFile["zenity"]}" ]
@@ -422,13 +422,13 @@ if [ $X -gt 0 ]; then
 			if [ $emerging -gt 0 ]; then
 				# human readable elapsed time
 				elapsed_h["s"]=$(( ${elapsed_h["s"]}+1 ))
-				if [ "${elapsed_h["s"]}" -gt 59 ]; then
+				if [ ${elapsed_h["s"]} -gt 59 ]; then
 					elapsed_h["m"]=$(( ${elapsed_h["m"]}+1 ))
 					elapsed_h["s"]=0
-					if [ "${elapsed_h["m"]}" -gt 59 ]; then
+					if [ ${elapsed_h["m"]} -gt 59 ]; then
 						elapsed_h["h"]=$(( ${elapsed_h["h"]}+1 ))
 						elapsed_h["m"]=0
-						if [ "${elapsed_h["h"]}" -gt 23 ]; then
+						if [ ${elapsed_h["h"]} -gt 23 ]; then
 							elapsed_h["d"]=$(( ${elapsed_h["d"]+1 ))
 							elapsed_h["h"]=0
 						fi
@@ -436,10 +436,10 @@ if [ $X -gt 0 ]; then
 				fi
 				print_line -n
 				print=" "
-				[ "${elapsed_h["d"]}" -gt 0 ] && print="${print}${elapsed_h["d"]} days "
-				[ "${elapsed_h["d"]}" -gt 0 ] || [ "${elapsed_h["h"]}" -gt 0 ] && print="${print}${elapsed_h["h"]}:"
-				[ "${elapsed_h["m"]}" -gt 9 ] && print="${print}${elapsed_h["m"]}:" || print="${print}0${elapsed_h["m"]}:"
-				[ "${elapsed_h["s"]}" -gt 9 ] && print="${print}${elapsed_h["s"]}:" || print="${print}0${elapsed_h["s"]}"				
+				[ ${elapsed_h["d"]} -gt 0 ] && print="${print}${elapsed_h["d"]} days "
+				[ ${elapsed_h["d"]} -gt 0 ] || [ ${elapsed_h["h"]} -gt 0 ] && print="${print}${elapsed_h["h"]}:"
+				[ ${elapsed_h["m"]} -gt 9 ] && print="${print}${elapsed_h["m"]}:" || print="${print}0${elapsed_h["m"]}:"
+				[ ${elapsed_h["s"]} -gt 9 ] && print="${print}${elapsed_h["s"]}" || print="${print}0${elapsed_h["s"]}"				
 				echo " ${print}"
 			else
 				echo "# Calculating upgrade ${dots}"
