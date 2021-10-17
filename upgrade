@@ -421,7 +421,7 @@ if [ $X -gt 0 ]; then
 			if [ $emerging -gt 0 ]; then
 				# human readable elapsed time
 				elapsed_h["s"]=$(( ${elapsed_h["s"]}+1 ))
-				if [ ${elapsed["s"] -gt 59 ]; then
+				if [ ${elapsed["s"]} -gt 59 ]; then
 					elapsed_h["m"]=$(( ${elapsed["m"]}+1 ))
 					elapsed_h["s"]=0
 					if [ ${elapsed["m"]} -gt 59 ]; then
