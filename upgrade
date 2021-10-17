@@ -304,19 +304,19 @@ if [ $X -gt 0 ]; then
 						case $unit in
 						 day*)
 							mult=86400
-							time_h="${time_h}${chk}d "
+							time_h="${time_h}['d']=${chk} "
 							;;
 						 hour*)
 						 	mult=3600
-						 	time_h="${time_h}${chk}h"
+						 	time_h="${time_h}['h']=${chk} "
 						 	;;
 						 minute*)
 						 	mult=60
-						 	time_h="${time_h}${chk}m"
+						 	time_h="${time_h}['m']=${chk} "
 						 	;;
 						 second*)
 						 	mult=1
-						 	time_h="${time_h}${chk}s"
+						 	time_h="${time_h}['s']=${chk} "
 						 	;;
 						 *)
 							mult=0
@@ -340,18 +340,31 @@ if [ $X -gt 0 ]; then
 		# get calculated times
 		avg=0   #average estimations
 		nb=0    #number of found packages
-		for i in ${!list[@]}; do
-			time[$i]=$( sed -n "$(( 2*$i+1 ))p" "${tmpFile["result"]}" )
-			[ -z ${time[$i]} ] && time[$i]=0
-			[ time[$i] -gt 0] && time_h[$i]=$( sed -n "$(( 2*$i+2 ))p" "${tmpFile["result"]}" ) || time_h='???'
-			# prepare average time
-			if [ ${time[$i]} -gt 0 ]; then
-				avg=$(( $avg+${time[$i]} ))
-				nb=$(( $nb+1 ))
-			fi
-		done
-		rm "${tmpFile["result"]}"
-		
+		if [ $ESTIMATE -gt 0 ]; then
+			for i in ${!list[@]}; do
+
+				time[$i]=$( sed -n "$(( 2*$i+1 ))p" "${tmpFile["result"]}" )
+				[ -z ${time[$i]} ] && time[$i]=0
+				if [ time[$i] -gt 0]; then
+					declare -A time_h[$i]=( $( sed -n "$(( 2*$i+2 ))p" "${tmpFile["result"]}" ) )
+					time_h[$i]['text']=""
+					[ ${time_h[$i]["d"]} -gt 0 ] && time_h[$i]["text"]="${time_h[$i]["text"]}${time_h[$i]["d"]} days "
+					[ ${time_h[$i]["d"]} -gt 0 ] || [ ${time_h[$i]["h"]} -gt 0 ] && time_h[$i]["text"]="${time_h[$i]["text"]}${time_h[$i]["h"]}:"
+					[ ${time_h[$i]["m"]} -gt 9 ] && time_h[$i]["text"]="${time_h[$i]["text"]}${time_h[$i]["m"]}:" || time_h[$i]["text"]="${time_h[$i]["text"]}0${time_h[$i]["m"]}:"
+					[ ${time_h[$i]["s"]} -gt 9 ] && time_h[$i]["text"]="${time_h[$i]["text"]}${time_h[$i]["s"]}:" || time_h[$i]["text"]="${time_h[$i]["text"]}0${time_h[$i]["s"]}"
+				else time_h[$i]['text']='???'
+				fi
+
+				# prepare average time
+				if [ ${time[$i]} -gt 0 ]; then
+					avg=$(( $avg+${time[$i]} ))
+					nb=$(( $nb+1 ))
+				fi
+			done
+
+			rm "${tmpFile["result"]}"
+		fi		
+
 		# average time
 		if [ $nb -gt 0 ] && [ $avg -gt 0 ]; then
 			avg=$(( $avg/$nb ))
@@ -366,7 +379,7 @@ if [ $X -gt 0 ]; then
 		if [ $ESTIMATE -gt 0 ]; then
 			choix=( $(
 				for i in ${!list[@]}; do
-				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
+				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]["text"]}"
 				done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' --separator ' ' --title "Here are packages that would be merged" --text "${text}" )
 			)
 		else
@@ -396,7 +409,7 @@ if [ $X -gt 0 ]; then
 				fi
 			done
 		fi
-		unset list package version action current time_h
+		unset list package version action current
 
 		# total time
 		total=0
@@ -415,7 +428,7 @@ if [ $X -gt 0 ]; then
 		sleep 1
 		emerging=0; installing=0
 		percent=0; elapsed=0;
-		declare -A elapsed_h=( ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
+		declare -A elapsed_h=( ['tot']=0 ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
 		dots=""
 		
 		while [ -f "${tmpFile["zenity"]}" ]
@@ -431,26 +444,35 @@ if [ $X -gt 0 ]; then
 
 			if [ $emerging -gt 0 ]; then
 				# human readable elapsed time
-				elapsed_h["s"]=$(( ${elapsed_h["s"]}+1 ))
-				if [ ${elapsed_h["s"]} -gt 59 ]; then
+				elapsed_h["tot"]=$(( ${elapsed_h["tot"]}+1 ))
+				case 0 in
+				 $(( ${elapsed_h["tot"]}%86400 )) )
+					elapsed_h["d"]=$(( ${elapsed_h["d"]}+1 ))
+					elapsed_h["h"]=0
+					elapsed_h["m"]=0
+					elapsed_h["s"]=0
+					;;
+				 $(( ${elapsed_h["tot"]}%3600 )) )
+					elapsed_h["h"]=$(( ${elapsed_h["h"]}+1 ))
+					elapsed_h["m"]=0
+					elapsed_h["s"]=0
+					;;
+				 $(( ${elapsed_h["tot"]}%60 )) )
 					elapsed_h["m"]=$(( ${elapsed_h["m"]}+1 ))
 					elapsed_h["s"]=0
-					if [ ${elapsed_h["m"]} -gt 59 ]; then
-						elapsed_h["h"]=$(( ${elapsed_h["h"]}+1 ))
-						elapsed_h["m"]=0
-						if [ ${elapsed_h["h"]} -gt 23 ]; then
-							elapsed_h["d"]=$(( ${elapsed_h["d"]+1 ))
-							elapsed_h["h"]=0
-						fi
-					fi
-				fi
+					;;
+				 *)
+					elapsed_h["s"]=$(( ${elapsed_h["s"]}+1 ))
+					;;
+				esac
+					
 				print_line -n
-				print=" "
+				print=""
 				[ ${elapsed_h["d"]} -gt 0 ] && print="${print}${elapsed_h["d"]} days "
 				[ ${elapsed_h["d"]} -gt 0 ] || [ ${elapsed_h["h"]} -gt 0 ] && print="${print}${elapsed_h["h"]}:"
 				[ ${elapsed_h["m"]} -gt 9 ] && print="${print}${elapsed_h["m"]}:" || print="${print}0${elapsed_h["m"]}:"
 				[ ${elapsed_h["s"]} -gt 9 ] && print="${print}${elapsed_h["s"]}" || print="${print}0${elapsed_h["s"]}"				
-				echo " ${print}"
+				echo " - ${print} / ${time_h[$emerging-1]["text"]} (estimated)"
 			else
 				echo "# Calculating upgrade ${dots}"
 				[ "$dots" = "..." ] && dots="" || dots="${dots}."
@@ -475,7 +497,10 @@ if [ $X -gt 0 ]; then
 						break
 					fi
 				done
-				percent=$(( 100*${elapsed}/${total} ))
+				if [ ${elapsed["tot"]} -ge ${time[$emerging-1]} ]; then
+					percent=$(( 100*${elapsed}/${total} ))
+				else percent=0 #à faire ???
+				fi
 			fi
 
 			echo "$percent"
