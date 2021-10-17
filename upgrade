@@ -407,7 +407,6 @@ if [ $X -gt 0 ]; then
 		percent=0; elapsed=0;
 		elapsed_h=( ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
 		dots=""
-		text-wait="Calculating upgrade "
 		
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
@@ -441,7 +440,7 @@ if [ $X -gt 0 ]; then
 				[ ${elapsed["d"]} -gt 0 ] || [ ${elapsed["h"]} -gt 0 ] && print="${print}${elapsed["h"]}:"
 				[ ${elapsed["m"]} -gt 9 ] && print="${print}${elapsed["m"]}:" || print="${print}0${elapsed["m"]}:"
 				[ ${elapsed["s"]} -gt 9 ] && print="${print}${elapsed["s"]}:" || print="${print}0${elapsed["s"]}"				
-				echo -ne "${print}\r"
+				echo " ${print}"
 			else
 				echo "# Calculating upgrade ${dots}"
 				[ "$dots" = "..." ] && dots="" || dots="${dots}."
