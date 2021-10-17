@@ -311,11 +311,11 @@ if [ $X -gt 0 ]; then
 						 	;;
 						 minute*)
 						 	mult=60
-						 	time_h[$i]="${time_h[$i]}${chk}:"
+						 	time_h[$i]="${time_h[$i]}${chk}m"
 						 	;;
 						 second*)
 						 	mult=1
-						 	time_h[$i]=${time_h[$i]}${chk}
+						 	time_h[$i]="${time_h[$i]}${chk}s"
 						 	;;
 						 *)
 							mult=0
