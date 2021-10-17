@@ -443,8 +443,8 @@ if [ $X -gt 0 ]; then
 				[ ${elapsed["s"]} -gt 9 ] && print="${print}${elapsed["s"]}:" || print="${print}0${elapsed["s"]}"				
 				echo -ne "${print}\r"
 			else
-				[ "$dots" = "..." ] && dots="" || dots="${dots}."
 				echo "# Calculating upgrade ${dots}"
+				[ "$dots" = "..." ] && dots="" || dots="${dots}."
 			fi
 
 			if [ $edited -gt 0 ]; then
