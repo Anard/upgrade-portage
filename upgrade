@@ -8,6 +8,7 @@ iconPath="/usr/share/icons/hicolor/64x64/apps/upgrade-portage.png"
 if [ ! -f "${iconPath}" ]; then
 	iconPath="`dirname \"$0\"`/upgrade-portage.png"
 fi
+worldFile="/var/lib/portage/world"
 declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['zenity']="/tmp/zenity-progress.log" ['result']="/tmp/portage-result" )
 
 # Functions
@@ -272,22 +273,100 @@ if [ $X -gt 0 ]; then
 		prepare_for_exit && UPGRADE_NEEDED=0
 
 	else
+		avg=0   #average estimations
+		nb=0    #number of found packages
+
 		# list of all packages that would be merged
 		list=( $( sed '/^\[/!d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d] -f2 ) )
 		# prepare output and ask for final choice
 		for i in ${!list[@]}; do
 			package[$i]=${list[$i]%-[0-9]*}
-			version[$i]=${list[$i]##*[a-z][A-Z]-}
+			version[$i]=${list[$i]##*[a-zA-Z]-}
 			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
-		done
+			grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="* ${action[$i]} *"
+			
+			# Build time estimation
+			if [ $ESTIMATE -gt 0 ]; then
+				# estimate each time
+				echo "# Estimating merge time for ${package[$i]}"
+				time[$i]=0; time_h[$i]=""
+				est=( $( genlop -nt ${package[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
+				
+				j=0
+				while [ $j -lt ${#est[@]} ]; do
+					chk=${est[$j]}
+					#test if number
+					if [ $chk -eq $chk ] 2>/dev/null; then
+						unit=${est[$j+1]}
+						#find unit
+						case $unit in
+						 day*)
+							mult=86400
+							time_h[$i]="${time_h[$i]}${chk}d "
+							;;
+						 hour*)
+						 	mult=3600
+						 	time_h[$i]="${time_h[$i]}${chk}h"
+						 	;;
+						 minute*)
+						 	mult=60
+						 	time_h[$i]="${time_h[$i]}${chk}:"
+						 	;;
+						 second*)
+						 	mult=1
+						 	time_h[$i]=${time_h[$i]}${chk}
+						 	;;
+						 *)
+							mult=0
+						 	;;
+						esac
 
+						#calc
+						time[$i]=$(( ${time[$i]} + $mult*$chk ))
+						#shift
+						j=$(( $j+1 ))
+					fi
+					#shift
+					j=$(( $j+1 ))
+				done
+			
+				# prepare average time
+				if [ ${time[$i]} -gt 0 ]; then
+					avg=$(( $avg+${time[$i]} ))
+					nb=$(( $nb+1 ))
+				fi
+			fi
+		done
+		
+		# average/total time
+		if [ $nb -gt 0 ] && [ $avg -gt 0 ]; then
+			avg=$(( $avg/$nb ))
+		else avg=10
+		fi
+		
+		total=0
+		for i in ${!list[@]}; do
+			[ ${time[$i]} -eq 0 ] && time[$i]=$avg && time_h[$i]="???"
+			total=$(( $total+${time[$i]} ))
+		done
+		
 		text="Uncheck packages you want to exclude\n"
 		text+=$( sed '/^\[/d' "${tmpFile["logs"]}" )
-		choix=( $(
-			for i in ${!list[@]}; do
+		if [ $ESTIMATE -gt 0 ]; then
+			choix=( $(
+				for i in ${!list[@]}; do
+				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
+				done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' --separator ' ' --title "Here are packages that would be merged" --text "${text}" )
+			)
+		else
+			choix=( $(
+				for i in ${!list[@]}; do
 				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}"
-			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "Here are packages that would be merged" --text "${text}" ) )
+				done | zenity --width 600 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "Here are packages that would be merged" --text "${text}" )
+			)
+		fi
+		
 		if [ "$?" -gt 0 ]; then
 			echo "Aborted"
 			prepare_for_exit
@@ -303,78 +382,11 @@ if [ $X -gt 0 ]; then
 					j=$(( $j+1 ))
 				else
 					exclude+=" --exclude ${package[$i]}"
+					time=( ${time[@]:0:$i} ${time[@]:$i+1} )
 				fi
 			done
 		fi
-		unset list package version action current
-
-		# Build time estimation
-		avg=0   #average estimations
-		nb=0    #number of found packages
-		if [ $ESTIMATE -gt 0 ]; then
-			# estimate each time
-			for i in ${!choix[@]}; do
-				echo "# Estimating merge time for ${choix[$i]}"
-				#echo $(( 100*${i}/${#choix[@]} ))
-				time[$i]=0
-#				est=( $( genlop -nt ${choix[$i]} -f /var/log/emerge.log-20211003.gz | sed -n 's/ *merge time: //p' | tail -1 ) )
-				est=( $( genlop -nt ${choix[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
-				
-				j=0
-				while [ $j -lt ${#est[@]} ]; do
-					chk=${est[$j]}
-					#test if number
-					if [ $chk -eq $chk ] 2>/dev/null; then
-						unit=${est[$j+1]}
-						#find unit
-						case $unit in
-						 day*)
-							mult=86400
-							;;
-						 hour*)
-						 	mult=3600
-						 	;;
-						 minute*)
-						 	mult=60
-						 	;;
-						 second*)
-						 	mult=1
-						 	;;
-						 *)
-							mult=0
-						 	;;
-						esac
-
-						#calc
-						time[$i]=$(( ${time[$i]} + $mult*$chk ))
-						#shift
-						j=$(( $j+1 ))
-					fi
-					#shift
-					j=$(( $j+1 ))
-				done
-
-			done #| zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time" --text ""
-			
-			# get average times
-			for estimated in ${time[@]}; do
-				avg=$(( $avg+$estimated ))
-				[ $estimated -gt 0 ] && nb=$(( $nb+1 ))
-			done
-		fi
-		
-		if [ $nb -gt 0 ]; then
-			avg=$(( $avg/$nb ))
-		else avg=10
-		fi
-		
-		total=0
-		for i in ${!choix[@]}; do
-			[ ${time[$i]} -eq 0 ] && time[$i]=$avg
-			total=$(( $total+${time[$i]} ))
-		done
-		
-		unset choix
+		unset list package version action current time_h
 
 		# finally emerge
 		text="Upgrading your system"
@@ -388,11 +400,10 @@ if [ $X -gt 0 ]; then
 		emerging=0
 		installing=0
 		percent=0
-		echo ${time[@]}
+		elapsed=0
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
 			sleep .5
-#			print_line
 			edited=0
 			new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
 			[ ! -z $new ] && [ $new -gt $emerging ] && emerging=$new && edited=1
@@ -402,13 +413,21 @@ if [ $X -gt 0 ]; then
 
 			if [ $edited -gt 0 ]; then
 				print_line
-
-				elapsed=0
-				for i in ${time[@]:0:$installing}; do
-					[ $installing -eq $emerging ] && i=$(( 8*$i/10 ))
-					elapsed=$(( $elapsed + $i ))
+				cur_package=$( get_line | awk -F' ' '{ print $6 }' )
+				cur_package=${cur_package%-[0-9]*}
+				
+				for i in ${!choix[@]}; do
+					if [ "${choix[$i]}" = "${cur_package}" ]; then
+						if [ $installing -eq $emerging ]; then
+							add=$(( 8*${time[$i]}/10 ))
+						elif [ $installing -gt 0 ]; then
+							add=$(( 2*${time[$i]}/10 ))
+						else add=0
+						fi
+						elapsed=$(( $elapsed + $add ))
+						break
+					fi
 				done
-
 				percent=$(( 100*${elapsed}/${total} ))
 			fi
 
@@ -416,6 +435,8 @@ if [ $X -gt 0 ]; then
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text "Calculating upgrade ..."
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
+
+		unset choix time
 
 		# Print messages from emerging
 		if [ -f "${portage_log}" ]; then
