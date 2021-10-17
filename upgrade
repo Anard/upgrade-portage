@@ -75,7 +75,7 @@ SET='@world'
 set_param 'x' 0
 set_param 'q' 0
 set_param 'v' 0
-set_param 's' 1;
+set_param 's' 1
 UPGRADE_NEEDED=1
 
 # Get parameters
