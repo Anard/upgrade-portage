@@ -276,9 +276,6 @@ if [ $X -gt 0 ]; then
 		prepare_for_exit && UPGRADE_NEEDED=0
 
 	else
-		avg=0   #average estimations
-		nb=0    #number of found packages
-
 		# list of all packages that would be merged
 		list=( $( sed '/^\[/!d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d] -f2 ) )
 		# prepare output and ask for final choice
@@ -293,10 +290,11 @@ if [ $X -gt 0 ]; then
 			if [ $ESTIMATE -gt 0 ]; then
 				# estimate each time
 				echo "# Estimating merge time for ${package[$i]}"
-				time[$i]=0; time_h[$i]=""
+				echo $(( 100*$i/${!list[@]} ))
 				est=( $( genlop -nt ${package[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
 				
 				j=0
+				time=0; time_h=""
 				while [ $j -lt ${#est[@]} ]; do
 					chk=${est[$j]}
 					#test if number
@@ -306,19 +304,19 @@ if [ $X -gt 0 ]; then
 						case $unit in
 						 day*)
 							mult=86400
-							time_h[$i]="${time_h[$i]}${chk}d "
+							time_h="${time_h}${chk}d "
 							;;
 						 hour*)
 						 	mult=3600
-						 	time_h[$i]="${time_h[$i]}${chk}h"
+						 	time_h="${time_h}${chk}h"
 						 	;;
 						 minute*)
 						 	mult=60
-						 	time_h[$i]="${time_h[$i]}${chk}m"
+						 	time_h="${time_h}${chk}m"
 						 	;;
 						 second*)
 						 	mult=1
-						 	time_h[$i]="${time_h[$i]}${chk}s"
+						 	time_h="${time_h}${chk}s"
 						 	;;
 						 *)
 							mult=0
@@ -326,19 +324,30 @@ if [ $X -gt 0 ]; then
 						esac
 
 						#calc
-						time[$i]=$(( ${time[$i]} + $mult*$chk ))
+						time=$(( $time + $mult*$chk ))
 						#shift
 						j=$(( $j+1 ))
 					fi
 					#shift
 					j=$(( $j+1 ))
 				done
-			
-				# prepare average time
-				if [ ${time[$i]} -gt 0 ]; then
-					avg=$(( $avg+${time[$i]} ))
-					nb=$(( $nb+1 ))
-				fi
+	
+				echo $time >> "${tmpFile["result"]}
+				echo $time_h >> "${tmpFile["result"]}
+			fi
+		done | zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time"
+		
+		# get calculated times
+		avg=0   #average estimations
+		nb=0    #number of found packages
+		for i in ${!list[@]}; do
+			time[$i]=$( sed -n "$(( 2*$i ))p" "${tmpFile["result"]}" )
+			[ -z ${time[$i]} ] && time[$i]=0
+			[ time[$i] -gt 0] && time_h[$i]=$( sed -n "$(( 2*$i+1 ))p" "${tmpFile["result"]}" ) || time_h='???'
+			# prepare average time
+			if [ ${time[$i]} -gt 0 ]; then
+				avg=$(( $avg+${time[$i]} ))
+				nb=$(( $nb+1 ))
 			fi
 		done
 		
@@ -348,7 +357,7 @@ if [ $X -gt 0 ]; then
 		else avg=10
 		fi
 		for i in ${!list[@]}; do
-			[ ${time[$i]} -eq 0 ] && time[$i]=$avg && time_h[$i]="???"
+			[ ${time[$i]} -eq 0 ] && time[$i]=$avg
 		done
 		
 		text="Uncheck packages you want to exclude\n"
