@@ -436,10 +436,10 @@ if [ $X -gt 0 ]; then
 				fi
 				print_line -n
 				print=" "
-				[ ${elapsed_h["d"]} -gt 0 ] && print="${print}${elapsed_h["d"]} days "
-				[ ${elapsed_h["d"]} -gt 0 ] || [ ${elapsed_h["h"]} -gt 0 ] && print="${print}${elapsed_h["h"]}:"
-				[ ${elapsed_h["m"]} -gt 9 ] && print="${print}${elapsed_h["m"]}:" || print="${print}0${elapsed_h["m"]}:"
-				[ ${elapsed_h["s"]} -gt 9 ] && print="${print}${elapsed_h["s"]}:" || print="${print}0${elapsed_h["s"]}"				
+				[ "${elapsed_h["d"]}" -gt 0 ] && print="${print}${elapsed_h["d"]} days "
+				[ "${elapsed_h["d"]}" -gt 0 ] || [ "${elapsed_h["h"]}" -gt 0 ] && print="${print}${elapsed_h["h"]}:"
+				[ "${elapsed_h["m"]}" -gt 9 ] && print="${print}${elapsed_h["m"]}:" || print="${print}0${elapsed_h["m"]}:"
+				[ "${elapsed_h["s"]}" -gt 9 ] && print="${print}${elapsed_h["s"]}:" || print="${print}0${elapsed_h["s"]}"				
 				echo " ${print}"
 			else
 				echo "# Calculating upgrade ${dots}"
