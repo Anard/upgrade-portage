@@ -456,6 +456,9 @@ if [ $X -gt 0 ]; then
 							add=$(( 8*${time[$i]}/10 ))
 						elif [ $installing -gt 0 ]; then
 							add=$(( 2*${time[$i]}/10 ))
+							for i in ${!elapsed_h[@]}; do
+								elapsed_h[$i]=0
+							done
 						else add=0
 						fi
 						elapsed=$(( $elapsed + $add ))
