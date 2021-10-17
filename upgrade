@@ -406,6 +406,8 @@ if [ $X -gt 0 ]; then
 		emerging=0; installing=0
 		percent=0; elapsed=0;
 		elapsed_h=( ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
+		dots=""
+		text-wait="Calculating upgrade "
 		
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
@@ -441,7 +443,8 @@ if [ $X -gt 0 ]; then
 				[ ${elapsed["s"]} -gt 9 ] && print="${print}${elapsed["s"]}:" || print="${print}0${elapsed["s"]}"				
 				echo -ne "${print}\r"
 			else
-				print_line
+				[ "$dots" = "..." ] && dots="" || dots="${dots}."
+				echo "# Calculating upgrade ${dots}"
 			fi
 
 			if [ $edited -gt 0 ]; then
