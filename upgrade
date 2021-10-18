@@ -362,6 +362,7 @@ if [ $X -gt 0 ]; then
 					[ ${time_hum["d"]} -gt 0 ] || [ ${time_hum["h"]} -gt 0 ] && time_h[$i]="${time_h[$i]}${time_hum["h"]}:"
 					[ ${time_hum["m"]} -gt 9 ] && time_h[$i]="${time_h[$i]}${time_hum["m"]}:" || time_h[$i]="${time_h[$i]}0${time_hum["m"]}:"
 					[ ${time_hum["s"]} -gt 9 ] && time_h[$i]="${time_h[$i]}${time_hum["s"]}" || time_h[$i]="${time_h[$i]}0${time_hum["s"]}"
+					unset time_hum
 				else time_h[$i]='???'
 				fi
 
@@ -456,11 +457,10 @@ if [ $X -gt 0 ]; then
 				
 				for current in ${!choix[@]}; do
 					if [ "${choix[$current]}" = "${cur_package}" ]; then
-						[ ${time[$current]} -eq 0 ] && add=$avg || add=${time[$current]}
 						if [ $installing -eq $emerging ]; then
-							add=$(( 8*${add}/10 ))
+							[ ${time[$current]} -eq 0 ] && add=$(( 8*${avg}/10 )) || add=0
 						elif [ $installing -gt 0 ]; then
-							add=$(( 2*${add}/10 ))
+							[ ${time[$current]} -eq 0 ] && add=$(( 2*${avg}/10 )) || add=${time[$current]}
 							for i in ${!elapsed_h[@]}; do
 								elapsed_h[$i]=0
 							done
@@ -511,18 +511,18 @@ if [ $X -gt 0 ]; then
 				[ "$dots" = "..." ] && dots="" || dots="${dots}."
 			fi
 			
-			if [ $edited -gt 0 ] || [ ${elapsed_h["tot"]} -ge ${time[$emerging-1]} ]; then
+			if [ ${elapsed_h["tot"]} -ge ${time[$current]} ]; then
 				percent=$(( 100*${elapsed}/${total} ))
-			elif [ $emerging -gt 0 ] && [ ${time[$emerging-1]} -gt 0 ]; then
-				percent=$(( 100*${elapsed}/${total} + 100*${elapsed_h["tot"]}/${time[$emerging-1]} ))
+			elif [ $emerging -gt 0 ] && [ ${time[$current]} -gt 0 ]; then
+				percent=$(( 100*${elapsed}/${total} + 100*${elapsed_h["tot"]}/${time[$current]} ))
 			fi
 				
 			echo "$percent"
-		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text "Calculating upgrade ..."
+		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text ""
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 
-		unset choix time
+		unset choix time time_h elapsed_h
 
 		# Print messages from emerging
 		if [ -f "${portage_log}" ]; then
@@ -589,7 +589,8 @@ if [ -z $exclude ] && [ "$SET" = "@world" ]; then
 			remove=$( sed -n '$p' "${tmpFile["logs"]}" | awk -F ' ' '{print $4}' )
 			# remove unwanted lines from output
 			sed -i '/\//!d' "${tmpFile["logs"]}"
-			sed -i '/=/d' "${tmpFile["logs"]}"			
+			sed -i '/=/d' "${tmpFile["logs"]}"
+			sed -i '/*/d' "${tmpFile["logs"]}"
 
 			package=( $( cut -d: -f1 "${tmpFile["logs"]}" ) )
 			for i in ${!package[@]}; do
@@ -636,9 +637,9 @@ if [ -z $exclude ] && [ "$SET" = "@world" ]; then
 				[ "$new" = "" ] || cleaning=$new
 
 				if [ -z $total ]; then
-					[ "$new" = "" ] || total=`grep "Unmerging (" "${tmpFile["logs"]}" | awk -F[\(\)\ ] '{ print $6 }'`
+					[ "$new" = "" ] || total=`get_line "Unmerging (" | awk -F[\(\)\ ] '{ print $6 }'`
 				fi
-				[ -z $total ] || percent=$((100*($cleaning-1)/$total))
+				[ -z $total ] || percent=$(( 100*($cleaning-1)/$total ))
 				echo "$percent"
 			done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text ""
 
