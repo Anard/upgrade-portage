@@ -295,8 +295,7 @@ if [ $X -gt 0 ]; then
 
 				echo "# Estimating merge time for ${package[$i]}"
 				echo $(( 100*$i/${#list[@]} ))
-#				est=( $( genlop -nt ${package[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
-				est=( $( genlop -nt -f /var/log/emerge.log-20211003.gz ${package[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
+				est=( $( genlop -nt ${package[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
 				j=0
 				time=0; declare -A time_h=( ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
 				while [ $j -lt ${#est[@]} ]; do
