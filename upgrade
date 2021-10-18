@@ -459,7 +459,7 @@ if [ $X -gt 0 ]; then
 						if [ $installing -eq $emerging ]; then
 							[ ${time[$current]} -eq 0 ] && add=$(( 8*${avg}/10 )) || add=0
 						elif [ $installing -gt 0 ]; then
-							[ ${time[$current]} -eq 0 ] && add=$(( 2*${avg}/10 )) || add=${time[$current]}
+							[ ${time[$current-1]} -eq 0 ] && add=$(( 2*${avg}/10 )) || add=${time[$current-1]}
 							for i in ${!elapsed_h[@]}; do
 								elapsed_h[$i]=0
 							done
