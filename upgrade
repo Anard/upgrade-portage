@@ -454,12 +454,13 @@ if [ $X -gt 0 ]; then
 				cur_package=$( get_line | awk -F' ' '{ print $6 }' )
 				cur_package=${cur_package%-[0-9]*}
 				
+				[ -z $current ] || last=$current
 				for current in ${!choix[@]}; do
 					if [ "${choix[$current]}" = "${cur_package}" ]; then
 						if [ $installing -eq $emerging ]; then
 							[ ${time[$current]} -eq 0 ] && add=$(( 8*${avg}/10 )) || add=0
 						elif [ $installing -gt 0 ]; then
-							[ ${time[$current-1]} -eq 0 ] && add=$(( 2*${avg}/10 )) || add=${time[$current-1]}
+							[ ${time[$last]} -eq 0 ] && add=$(( 2*${avg}/10 )) || add=${time[$last]}
 							for i in ${!elapsed_h[@]}; do
 								elapsed_h[$i]=0
 							done
