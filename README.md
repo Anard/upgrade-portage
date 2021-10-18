@@ -2,6 +2,7 @@
 Script to easily upgrade Gentoo system
 
 Use `sudo upgrade` to upgrade your system or `upgrade --help` for help
+
 `-x` option (or desktop file) provides a gtk interactive script via zenity
 
 ## Installation
