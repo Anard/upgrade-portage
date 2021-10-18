@@ -287,7 +287,7 @@ if [ $X -gt 0 ]; then
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 			grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="* ${action[$i]} *"
 		done
-		
+
 		# Build time estimation
 		for i in ${!list[@]}; do
 			if [ $ESTIMATE -gt 0 ]; then
@@ -311,20 +311,20 @@ if [ $X -gt 0 ]; then
 							time_h['d']=${chk}
 							;;
 						 hour*)
-						 	mult=3600
-						 	time_h['h']=${chk}
-						 	;;
+							mult=3600
+							time_h['h']=${chk}
+							;;
 						 minute*)
-						 	mult=60
-						 	time_h['m']=${chk}
-						 	;;
+							mult=60
+							time_h['m']=${chk}
+							;;
 						 second*)
-						 	mult=1
-						 	time_h['s']=${chk}
-						 	;;
+							mult=1
+							time_h['s']=${chk}
+							;;
 						 *)
 							mult=0
-						 	;;
+							;;
 						esac
 
 						#calc
@@ -335,7 +335,7 @@ if [ $X -gt 0 ]; then
 					#shift
 					j=$(( $j+1 ))
 				done
-	
+
 				echo $time >> "${tmpFile["result"]}"
 				echo ${time_h["d"]} >> "${tmpFile["result"]}"
 				echo ${time_h["h"]} >> "${tmpFile["result"]}"
@@ -343,7 +343,7 @@ if [ $X -gt 0 ]; then
 				echo ${time_h["s"]} >> "${tmpFile["result"]}"
 			fi
 		done | zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time"
-		
+
 		# get calculated times
 		avg=0   #average estimations
 		nb=0    #number of found packages
@@ -374,7 +374,7 @@ if [ $X -gt 0 ]; then
 			done
 
 			rm "${tmpFile["result"]}"
-		fi		
+		fi
 
 		# average time
 		if [ $nb -gt 0 ] && [ $avg -gt 0 ]; then
@@ -495,7 +495,7 @@ if [ $X -gt 0 ]; then
 					elapsed_h["s"]=$(( ${elapsed_h["s"]}+1 ))
 					;;
 				esac
-					
+
 				print_line -n
 				print=""
 				[ ${elapsed_h["d"]} -gt 0 ] && print="${print}${elapsed_h["d"]} days "
@@ -510,19 +510,19 @@ if [ $X -gt 0 ]; then
 				echo "# Calculating upgrade ${dots}"
 				[ "$dots" = "..." ] && dots="" || dots="${dots}."
 			fi
-			
+
 			if [ ${elapsed_h["tot"]} -ge ${time[$current]} ]; then
 				percent=$(( 100*${elapsed}/${total} ))
 			elif [ $emerging -gt 0 ] && [ ${time[$current]} -gt 0 ]; then
 				percent=$(( 100*${elapsed}/${total} + 100*${elapsed_h["tot"]}/${time[$current]} ))
 			fi
-				
+
 			echo "$percent"
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text ""
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 
-		unset choix time time_h elapsed_h
+		unset choix time time_h elapsed_h total
 
 		# Print messages from emerging
 		if [ -f "${portage_log}" ]; then
@@ -534,7 +534,7 @@ if [ $X -gt 0 ]; then
 				package[$i]=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" )
 				start=$(( ${message[$i]}+1 ))
 				[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
-				
+
 				#print message
 				#sed -n "${start},${end}p" "${portage_log}" | sed 's/^\(ERROR.*\)$/<span color="red">\1<\/span>/' | sed 's/^\(WARN.*\)$/<span color="orange">\1<\/span>/' | sed 's/^\(LOG.*\)$/<span color="green">\1<\/span>/' \
 				sed -n "${start},${end}p" "${portage_log}" \
