@@ -511,9 +511,9 @@ if [ $X -gt 0 ]; then
 				[ "$dots" = "..." ] && dots="" || dots="${dots}."
 			fi
 
-			if [ ${elapsed_h["tot"]} -ge ${time[$current]} ]; then
+			if [ ${time[$current]} -eq 0 ]; then
 				percent=$(( 100*${elapsed}/${total} ))
-			elif [ $emerging -gt 0 ] && [ ${time[$current]} -gt 0 ]; then
+			elif [ $emerging -gt 0 ] && [ ${elapsed_h["tot"]} -lt ${time[$current]} ]; then
 				percent=$(( 100*${elapsed}/${total} + 100*${elapsed_h["tot"]}/${time[$current]} ))
 			fi
 
