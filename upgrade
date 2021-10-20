@@ -473,8 +473,17 @@ if [ $X -gt 0 ]; then
 			fi
 			
 			if [ $emerging -gt 0 ]; then
-				# human readable elapsed time
+				# real elapsed time
 				elapsed_h["tot"]=$(( ${elapsed_h["tot"]}+1 ))
+				
+				# recalculate percentage
+				if [ ${time[$current]} -eq 0 ]; then
+					percent=$(( 100*${elapsed}/${total} ))
+				elif [ ${elapsed_h["tot"]} -lt ${time[$current]} ]; then
+					percent=$(( 100*${elapsed}/${total} + 100*${elapsed_h["tot"]}/${time[$current]} ))
+				fi
+				
+				# human readable elapsed time
 				case 0 in
 				 $(( ${elapsed_h["tot"]}%86400 )) )
 					elapsed_h["d"]=$(( ${elapsed_h["d"]}+1 ))
@@ -496,6 +505,7 @@ if [ $X -gt 0 ]; then
 					;;
 				esac
 
+				# print line
 				print_line -n
 				print=""
 				[ ${elapsed_h["d"]} -gt 0 ] && print="${print}${elapsed_h["d"]} days "
@@ -510,13 +520,8 @@ if [ $X -gt 0 ]; then
 				echo "# Calculating upgrade ${dots}"
 				[ "$dots" = "..." ] && dots="" || dots="${dots}."
 			fi
-
-			if [ ${time[$current]} -eq 0 ]; then
-				percent=$(( 100*${elapsed}/${total} ))
-			elif [ $emerging -gt 0 ] && [ ${elapsed_h["tot"]} -lt ${time[$current]} ]; then
-				percent=$(( 100*${elapsed}/${total} + 100*${elapsed_h["tot"]}/${time[$current]} ))
-			fi
-
+			
+			# finally print percentage
 			echo "$percent"
 		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text ""
 
