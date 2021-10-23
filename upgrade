@@ -92,7 +92,7 @@ get_human_time () {
 	if [ "$1" = "--increment" ]; then
 		incr=1
 		shift
-	else incr=0
+	else unset incr
 	fi
 								
 	if [ $# -lt 2 ]; then
@@ -101,7 +101,7 @@ get_human_time () {
 	fi
 	
 	declare -n array=$1
-	if [ $incr -gt 0 ]; then 
+	if [ $incr ]; then 
 		case 0 in
 		 $(( $2%86400 )) )
 			array["d"]=$(( ${array["d"]}+1 ))
@@ -124,12 +124,12 @@ get_human_time () {
 		esac
 	else
 		machine=$2
-		array["d"]=$(( $machine%86400 ))
-		machine=$(( $machine - 86400*${array["d"]} ))
-		array["h"]=$(( $machine%3600 ))
-		machine=$(( $machine - 3600*${array["h"]} ))
-		array["m"]=$(( $machine%60 ))
-		array["s"]=$(( $machine - 60*${array["m"]} ))	
+		array["d"]=$(( $machine/86400 ))
+		machine=$(( $machine%86400 ))
+		array["h"]=$(( $machine/3600 ))
+		machine=$(( $machine%3600 ))
+		array["m"]=$(( $machine/60 ))
+		array["s"]=$(( $machine%60 ))
 	fi
 	return 0
 }
@@ -147,7 +147,7 @@ print_human_time () {
 	[ ${array["d"]} -gt 0 ] && return_str="${return_str}${array["d"]} days "
 	[ ${array["d"]} -gt 0 ] || [ ${array["h"]} -gt 0 ] && return_str="${return_str}${array["h"]}:"
 	[ ${array["m"]} -gt 9 ] && return_str="${return_str}${array["m"]}:" || return_str="${return_str}0${array["m"]}:"
-	[ ${array["s"]} -gt 9 ] && return_str="${return_str}${array["s"]}" || return_str="${return_str}0${array["s"]}"=
+	[ ${array["s"]} -gt 9 ] && return_str="${return_str}${array["s"]}" || return_str="${return_str}0${array["s"]}"
 	echo $return_str
 	return 0
 }
@@ -362,7 +362,7 @@ if [ $GTK ]; then
 		# prepare output and ask for final choice
 		for i in ${!list[@]}; do
 			package[$i]=${list[$i]%-[0-9]*}
-			version[$i]=${list[$i]##*[a-zA-Z]-}
+			version[$i]=${list[$i]#${package[$i]}-}
 			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 			grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="* ${action[$i]} *"
@@ -372,18 +372,10 @@ if [ $GTK ]; then
 		avg=0   #average estimations
 		nb=0    #number of found packages
 		if [ $ESTIMATE ]; then
-			
 			# estimate each time
+			echo "Estimating merge time"
 			for i in ${!list[@]}; do
-				echo "# Estimating merge time for ${package[$i]}"
-				echo $(( 100*$i/${#list[@]} ))
-				est=$( qlop -amMC "${package[$i]}" | awk -F' ' '{print $2}' )
-				echo $est >> "${tmpFile["result"]}"
-			done | zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time"
-
-			# prepare human & average
-			for i in ${!list[@]}; do
-				time[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["result"]}" )
+				time[$i]=$( qlop -amMC "${package[$i]}" | awk -F' ' '{print $2}' )
 				if [ -z ${time[$i]} ]; then
 					time[$i]=0
 					time_h[$i]='???'
@@ -397,8 +389,6 @@ if [ $GTK ]; then
 					unset time_hum
 				fi
 			done
-
-			rm "${tmpFile["result"]}"
 		fi
 
 		# final average time
@@ -448,8 +438,8 @@ if [ $GTK ]; then
 		# total time
 		total=0
 		for i in ${!choix[@]}; do
-			[ ${time_h[$i]} = '???' ] && add=$avg || add=${time[$i]}
-			total=$(( $total+${add} ))
+			[ "${time_h[$i]}" = "???" ] && add=$avg || add=${time[$i]}
+			total=$(( $total+$add ))
 		done
 
 		# finally emerge
@@ -461,7 +451,7 @@ if [ $GTK ]; then
 
 		( touch "${tmpFile["zenity"]}" && emerge -quDN ${exclude} ${SET} 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
 		sleep 1
-		# elsapsed for calculating percentage & elapsed_h to print current package's merge time
+		# elapsed for calculating percentage & elapsed_h to print current package's merge time
 		emerging=0; installing=0
 		percent=0; elapsed=0;
 		declare -A elapsed_h=( ['tot']=0 ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
@@ -508,7 +498,7 @@ if [ $GTK ]; then
 				if [ ${time[$current]} -eq 0 ]; then
 					percent=$(( 100*${elapsed}/${total} ))
 				elif [ ${elapsed_h["tot"]} -lt ${time[$current]} ]; then
-					percent=$(( 100*${elapsed}/${total} + 100*${elapsed_h["tot"]}/${time[$current]} ))
+					percent=$(( 100* (${elapsed}+${elapsed_h["tot"]}) / ${total} ))
 				fi
 				
 				# human readable elapsed time
