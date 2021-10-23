@@ -383,7 +383,7 @@ if [ $GTK ]; then
 
 			# prepare human & average
 			for i in ${!list[@]}; do
-				time[$i]=$( sed -n "${i}p" "${tmpFile["result"]}" )
+				time[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["result"]}" )
 				if [ -z ${time[$i]} ]; then
 					time[$i]=0
 					time_h[$i]='???'
