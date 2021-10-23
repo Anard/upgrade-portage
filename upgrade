@@ -11,7 +11,7 @@ fi
 worldFile="/var/lib/portage/world"
 declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['zenity']="/tmp/zenity-progress.log" ['result']="/tmp/portage-result" )
 
-# Functions
+###### FUNCTIONS
 set_param () {
 	case "$1" in
 	 's'|'sync')
@@ -26,16 +26,19 @@ set_param () {
 	 'x')
 		[ $2 -eq 0 ] && X=0 || X=1
 		;;
+	 'e')
+	 	[ $2 -eq 0 ] && ESTIMATE=0 || ESTIMATE=1
+	 	;;
 
 	 *)
 		echo -e "${red}An error occurred while setting parameters${normal}"
 		return 1
 		;;
 	esac
-return 0
+	return 0
 }
 
-# get last log line
+# Function to get last log line
 get_line () {
 	if [ $# -gt 0 ]; then
 		grep "$1" "${tmpFile["logs"]}" | sed -n '$p'
@@ -44,7 +47,8 @@ get_line () {
 	fi
 #	tail -1 "${tmpFile["logs"]}"
 }
-# print line in zenity
+
+# Function to print log line in zenity
 print_line () {
 	if [ $# -gt 0 ] && [ "$1" = "-n" ]; then
 		echo -ne `grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed 's/*//g'`
@@ -52,8 +56,8 @@ print_line () {
 	fi
 }
 
-# kill functions and delete tmp files
-## prepare_for_exit [function-to-kill] [...]
+# Function to kill commands and delete tmp files
+## USAGE: prepare_for_exit [command-to-kill] [...]
 prepare_for_exit () {
 	# get params
 	if [ $# -gt 0 ]; then
@@ -73,6 +77,80 @@ prepare_for_exit () {
 	return 0
 }
 
+# Function to get human readable time from machine time
+## USAGE: get_human_time --increment array machine_time
+## array must have been declared via -A option and have name different than 'array'
+get_human_time () {
+	if [ $# -eq 0 ]; then
+		echo "Invalid call to function get_human_time"
+		return 1
+	fi
+				
+	if [ "$1" = "--increment" ]; then
+		incr=1
+		shift
+	else incr=0
+	fi
+								
+	if [ $# -lt 2 ]; then
+		echo "Invalid parameter $1 for function get_human_time"
+		return 1
+	fi
+	
+	declare -n array=$1
+	if [ $incr -gt 0 ]; then 
+		case 0 in
+		 $(( $2%86400 )) )
+			array["d"]=$(( ${array["d"]}+1 ))
+			array["h"]=0
+			array["m"]=0
+			array["s"]=0
+			;;
+		 $(( $2%3600 )) )
+			array["h"]=$(( ${array["h"]}+1 ))
+			array["m"]=0
+			array["s"]=0
+			;;
+		 $(( $2%60 )) )
+			array["m"]=$(( ${array["m"]}+1 ))
+			array["s"]=0
+			;;
+		 *)
+			array["s"]=$(( ${array["s"]}+1 ))
+			;;
+		esac
+	else
+		machine=$2
+		array["d"]=$(( $machine%86400 ))
+		machine=$(( $machine - 86400*${array["d"]} ))
+		array["h"]=$(( $machine%3600 ))
+		machine=$(( $machine - 3600*${array["h"]} ))
+		array["m"]=$(( $machine%60 ))
+		array["s"]=$(( $machine - 60*${array["m"]} ))	
+	fi
+	return 0
+}
+
+# Function to print human readable time from human time array
+## USAGE: print_human_time human_time
+print_human_time () {
+	if [ ! $# -eq 1 ] || [ $1 -eq $1 ] &>/dev/null; then
+		echo "Invalid parameter for function print_human_time"
+		return 1
+	fi
+	
+	declare -n array=$1
+	return_str=""
+	[ ${array["d"]} -gt 0 ] && return_str="${return_str}${array["d"]} days "
+	[ ${array["d"]} -gt 0 ] || [ ${array["h"]} -gt 0 ] && return_str="${return_str}${array["h"]}:"
+	[ ${array["m"]} -gt 9 ] && return_str="${return_str}${array["m"]}:" || return_str="${return_str}0${array["m"]}:"
+	[ ${array["s"]} -gt 9 ] && return_str="${return_str}${array["s"]}" || return_str="${return_str}0${array["s"]}"=
+	echo $return_str
+	return 0
+}
+
+########
+
 # Initialisation
 SET='@world'
 set_param 'x' 0
@@ -80,13 +158,17 @@ set_param 'q' 0
 set_param 'v' 0
 set_param 's' 1
 UPGRADE_NEEDED=1
+# Check if qlop exists
+if [ $X -gt 0 ]; then
+       type qlop &> /dev/null && set_param 'e' 1 || set_param 'e' 0
+fi
 
 # Get parameters
 while [ "$#" -gt 0 ]; do
 	case "$1" in
-          "-h"|"--help")
-                # HELP
-                help=$( cat << HELP
+     "-h"|"--help")
+        # HELP
+        help=$( cat << HELP
 ${bold}Script for upgrading Gentoo${normal}
 Usage : ${Blue}upgrade${normal} [${Green}OPTIONS${normal}] [${Green}@SET${normal}]
 
@@ -101,9 +183,9 @@ ${Green}SET${normal} :
 
 HELP
 )
-                echo -e "$help"
-                exit 0
-                ;;
+        echo -e "$help"
+        exit 0
+        ;;
 
 	 @*)
 		SET=$1
@@ -129,11 +211,6 @@ HELP
 	esac
 	shift
 done
-
-# Check if genlop exists
-if [ $X -gt 0 ]; then
-       type genlop &> /dev/null && ESTIMATE=1 || ESTIMATE=0
-fi
 
 # Get repos locations
 echo "### $(date) ###"
@@ -289,111 +366,58 @@ if [ $X -gt 0 ]; then
 		done
 
 		# Build time estimation
-		for i in ${!list[@]}; do
-			if [ $ESTIMATE -gt 0 ]; then
-				# estimate each time
-
-				echo "# Estimating merge time for ${package[$i]}"
-				echo $(( 100*$i/${#list[@]} ))
-				est=( $( genlop -nt ${package[$i]} | sed -n 's/ *merge time: //p' | tail -1 ) )
-				j=0
-				time=0; declare -A time_h=( ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
-				while [ $j -lt ${#est[@]} ]; do
-					chk=${est[$j]}
-					#test if number
-					if [ $chk -eq $chk ] 2>/dev/null; then
-						unit=${est[$j+1]}
-						#find unit
-						case $unit in
-						 day*)
-							mult=86400
-							time_h['d']=${chk}
-							;;
-						 hour*)
-							mult=3600
-							time_h['h']=${chk}
-							;;
-						 minute*)
-							mult=60
-							time_h['m']=${chk}
-							;;
-						 second*)
-							mult=1
-							time_h['s']=${chk}
-							;;
-						 *)
-							mult=0
-							;;
-						esac
-
-						#calc
-						time=$(( $time + $mult*$chk ))
-						#shift
-						j=$(( $j+1 ))
-					fi
-					#shift
-					j=$(( $j+1 ))
-				done
-
-				echo $time >> "${tmpFile["result"]}"
-				echo ${time_h["d"]} >> "${tmpFile["result"]}"
-				echo ${time_h["h"]} >> "${tmpFile["result"]}"
-				echo ${time_h["m"]} >> "${tmpFile["result"]}"
-				echo ${time_h["s"]} >> "${tmpFile["result"]}"
-			fi
-		done | zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time"
-
-		# get calculated times
 		avg=0   #average estimations
 		nb=0    #number of found packages
 		if [ $ESTIMATE -gt 0 ]; then
+			
+			# estimate each time
 			for i in ${!list[@]}; do
-				time[$i]=$( sed -n "$(( 2*$i+1 ))p" "${tmpFile["result"]}" )
-				[ -z ${time[$i]} ] && time[$i]=0
-				if [ ${time[$i]} -gt 0 ]; then
-					declare -A time_hum
-					time_hum['d']=$( sed -n "$(( 2*$i+2 ))p" "${tmpFile["result"]}" )
-					time_hum['h']=$( sed -n "$(( 2*$i+3 ))p" "${tmpFile["result"]}" )
-					time_hum['m']=$( sed -n "$(( 2*$i+4 ))p" "${tmpFile["result"]}" )
-					time_hum['s']=$( sed -n "$(( 2*$i+5 ))p" "${tmpFile["result"]}" )
-					time_h[$i]=""
-					[ ${time_hum["d"]} -gt 0 ] && time_h[$i]="${time_h[$i]}${time_hum["d"]} days "
-					[ ${time_hum["d"]} -gt 0 ] || [ ${time_hum["h"]} -gt 0 ] && time_h[$i]="${time_h[$i]}${time_hum["h"]}:"
-					[ ${time_hum["m"]} -gt 9 ] && time_h[$i]="${time_h[$i]}${time_hum["m"]}:" || time_h[$i]="${time_h[$i]}0${time_hum["m"]}:"
-					[ ${time_hum["s"]} -gt 9 ] && time_h[$i]="${time_h[$i]}${time_hum["s"]}" || time_h[$i]="${time_h[$i]}0${time_hum["s"]}"
-					unset time_hum
-				else time_h[$i]='???'
-				fi
+				echo "# Estimating merge time for ${package[$i]}"
+				echo $(( 100*$i/${#list[@]} ))
+				est=$( qlop -amMC "${package[$i]}" | awk -F' ' '{print $2}' )
+				echo $est >> "${tmpFile["result"]}"
+			done | zenity --width 500 --window-icon "${iconPath}" --progress --auto-close --title "Estimating merge time"
 
-				# prepare average time
-				if [ ${time[$i]} -gt 0 ]; then
+			# prepare human & average
+			for i in ${!list[@]}; do
+				time[$i]=$( sed -n "${i}p" "${tmpFile["result"]}" )
+				if [ -z ${time[$i]} ]; then
+					time[$i]=0
+					time_h[$i]='???'
+				else
 					avg=$(( $avg+${time[$i]} ))
 					nb=$(( $nb+1 ))
+
+					declare -A time_hum
+					get_human_time time_hum ${time[$i]}
+					time_h[$i]=$( print_human_time time_hum )
+					unset time_hum
 				fi
 			done
 
 			rm "${tmpFile["result"]}"
 		fi
 
-		# average time
-		if [ $nb -gt 0 ] && [ $avg -gt 0 ]; then
+		# final average time
+		if [ $nb -gt 0 ]; then
 			avg=$(( $avg/$nb ))
 		else avg=10
 		fi
 		
+		title="Here are packages that would be merged"
 		text="Uncheck packages you want to exclude\n"
 		text+=$( sed '/^\[/d' "${tmpFile["logs"]}" )
 		if [ $ESTIMATE -gt 0 ]; then
 			choix=( $(
 				for i in ${!list[@]}; do
-				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
-				done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' --separator ' ' --title "Here are packages that would be merged" --text "${text}" )
+					echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
+				done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' --separator ' ' --title "${title}" --text "${text}" )
 			)
 		else
 			choix=( $(
 				for i in ${!list[@]}; do
-				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}"
-				done | zenity --width 600 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "Here are packages that would be merged" --text "${text}" )
+					echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}"
+				done | zenity --width 600 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "${title}" --text "${text}" )
 			)
 		fi
 		
@@ -421,7 +445,7 @@ if [ $X -gt 0 ]; then
 		# total time
 		total=0
 		for i in ${!choix[@]}; do
-			[ ${time[$i]} -eq 0 ] && add=$avg || add=${time[$i]}
+			[ ${time_h[$i]} = '???' ] && add=$avg || add=${time[$i]}
 			total=$(( $total+${add} ))
 		done
 
@@ -434,6 +458,7 @@ if [ $X -gt 0 ]; then
 
 		( touch "${tmpFile["zenity"]}" && emerge -quDN ${exclude} ${SET} 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
 		sleep 1
+		# elsapsed for calculating percentage & elapsed_h to print current package's merge time
 		emerging=0; installing=0
 		percent=0; elapsed=0;
 		declare -A elapsed_h=( ['tot']=0 ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
@@ -484,34 +509,11 @@ if [ $X -gt 0 ]; then
 				fi
 				
 				# human readable elapsed time
-				case 0 in
-				 $(( ${elapsed_h["tot"]}%86400 )) )
-					elapsed_h["d"]=$(( ${elapsed_h["d"]}+1 ))
-					elapsed_h["h"]=0
-					elapsed_h["m"]=0
-					elapsed_h["s"]=0
-					;;
-				 $(( ${elapsed_h["tot"]}%3600 )) )
-					elapsed_h["h"]=$(( ${elapsed_h["h"]}+1 ))
-					elapsed_h["m"]=0
-					elapsed_h["s"]=0
-					;;
-				 $(( ${elapsed_h["tot"]}%60 )) )
-					elapsed_h["m"]=$(( ${elapsed_h["m"]}+1 ))
-					elapsed_h["s"]=0
-					;;
-				 *)
-					elapsed_h["s"]=$(( ${elapsed_h["s"]}+1 ))
-					;;
-				esac
+				get_human_time --increment elapsed_h ${elapsed_h["tot"]}
 
 				# print line
 				print_line -n
-				print=""
-				[ ${elapsed_h["d"]} -gt 0 ] && print="${print}${elapsed_h["d"]} days "
-				[ ${elapsed_h["d"]} -gt 0 ] || [ ${elapsed_h["h"]} -gt 0 ] && print="${print}${elapsed_h["h"]}:"
-				[ ${elapsed_h["m"]} -gt 9 ] && print="${print}${elapsed_h["m"]}:" || print="${print}0${elapsed_h["m"]}:"
-				[ ${elapsed_h["s"]} -gt 9 ] && print="${print}${elapsed_h["s"]}" || print="${print}0${elapsed_h["s"]}"
+				print=$( print_human_time elapsed_h )
 				if [ ${time[$current]} -gt 0 ]; then
 					echo " - ${print} / ${time_h[$current]} (estimated)"
 				else echo " - ${print}"
@@ -664,11 +666,7 @@ if [ -z $exclude ] && [ "$SET" = "@world" ]; then
 fi
 
 # Finished
-if [ $UPGRADE_NEEDED -eq 0 ]; then
-	text="Your system is already up to date"
-else
-	text="Your system is now up to date"
-fi
+[ $UPGRADE_NEEDED -eq 0 ] && text="Your system is already up to date" || text="Your system is now up to date"
 [ $X -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}" && prepare_for_exit
 echo "${text}"
 
