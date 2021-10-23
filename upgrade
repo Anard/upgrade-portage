@@ -101,7 +101,7 @@ get_human_time () {
 	fi
 	
 	declare -n array=$1
-	if [ $incr ]; then 
+	if [ $incr ]; then
 		case 0 in
 		 $(( $2%86400 )) )
 			array["d"]=$(( ${array["d"]}+1 ))
