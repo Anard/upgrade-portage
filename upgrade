@@ -15,19 +15,22 @@ declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['zenity']="/tmp/zenity
 set_param () {
 	case "$1" in
 	 's'|'sync')
-		[ $2 -eq 0 ] && SYNC=0 || SYNC=1
+		[ $2 -eq 0 ] && unset SYNC || SYNC=1
 		;;
 	 'q'|'quiet')
-		[ $2 -eq 0 ] && QUIET=0 || QUIET=1
+		[ $2 -eq 0 ] && unset QUIET || QUIET='q'
 		;;
 	 'v'|'verbose')
-		[ $2 -eq 0 ] && VERBOSE=0 || VERBOSE=1
+		[ $2 -eq 0 ] && unset VERBOSE || VERBOSE='v'
 		;;
 	 'x')
-		[ $2 -eq 0 ] && X=0 || X=1
+		[ $2 -eq 0 ] && unset GTK || GTK=1
 		;;
 	 'e')
-	 	[ $2 -eq 0 ] && ESTIMATE=0 || ESTIMATE=1
+	 	[ $2 -eq 0 ] && unset ESTIMATE || ESTIMATE=1
+	 	;;
+	 'u')
+	 	[ $2 -eq 0 ] && unset UPGRADE_NEEDED || UPGRADE_NEEDED=1
 	 	;;
 
 	 *)
@@ -157,11 +160,7 @@ set_param 'x' 0
 set_param 'q' 0
 set_param 'v' 0
 set_param 's' 1
-UPGRADE_NEEDED=1
-# Check if qlop exists
-if [ $X -gt 0 ]; then
-       type qlop &> /dev/null && set_param 'e' 1 || set_param 'e' 0
-fi
+set_param 'u' 1
 
 # Get parameters
 while [ "$#" -gt 0 ]; do
@@ -212,6 +211,11 @@ HELP
 	shift
 done
 
+# Check if qlop exists
+if [ $GTK ]; then
+       type qlop &> /dev/null && set_param 'e' 1 || set_param 'e' 0
+fi
+
 # Get repos locations
 echo "### $(date) ###"
 repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
@@ -224,19 +228,19 @@ for i in "${!repos[@]}"; do
 	if [ -f "${repos[$i]}/Manifest" ]; then
 		time[$i]=$( date -d `grep TIMESTAMP "${repos[$i]}/Manifest" | cut -d ' ' -f2` "+%s" )
 		text="Last sync for ${repos[$i]##*/} is `date -d @${time[$i]}`"
-		[ $QUIET -gt 0 ] && [ $VERBOSE -eq 0 ] || echo "${text}"
+		[ $QUIET ] && [ ! $VERBOSE ] || echo "${text}"
 
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
 			text1="Sync date for ${repos[$i]##*/} is newer than now"
 			text2=", please correct your local time"
-			[ $X -eq 0 ] &&	echo -e "${red}${text1}${normal}${text2}" || zenity --width=500 --window-icon "${iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
+			[ ! $GTK ] && echo -e "${red}${text1}${normal}${text2}" || zenity --width=500 --window-icon "${iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
 			echo "Exiting..."
 			exit 1
 		fi
 
 	else
 		text="Unknown last sync for ${repos[$i]##*/}"
-		[ $VERBOSE -eq 0 ] || echo "${text}"
+		[ $VERBOSE ] && echo "${text}"
 	fi
 done
 for time in "${time[@]}"; do
@@ -255,7 +259,11 @@ if [ $now -lt $last ]; then
 	text2="Do you want to sync again ?"
 	text3="-->" 
 
-	if [ $X -eq 0 ]; then
+	if [ $GTK ]; then
+		if ! zenity --width=300 --window-icon "${iconPath}" --question --title "${text1}" --text "${text2}" --default-cancel; then
+			set_param 's' 0
+		fi
+	else
 		echo "${bold}${text1}${normal}. ${text2} (y/N)"
 		while true;	do
 
@@ -263,7 +271,7 @@ if [ $now -lt $last ]; then
 
 			case "$ans" in
 				[nN]*|'')
-					SYNC=0
+					set_param 's' 0
 					break 2
 					;;
 
@@ -277,21 +285,16 @@ if [ $now -lt $last ]; then
 
 			esac
 		done
-	else
-		if zenity --width=300 --window-icon "${iconPath}" --question --title "${text1}" --text "${text2}" --default-cancel; then
-			SYNC=1
-		else SYNC=0
-		fi
 	fi
 	text="Last sync newer than 24h, "
-	[ $SYNC -eq 0 ] && echo "${text}skipping sync" || echo "${text}forcing sync"
+	[ $SYNC ] && echo "${text}forcing sync" || echo "${text}skipping sync"
 fi
 
 # Sync
-if [ $SYNC -gt 0 ]; then
+if [ $SYNC ]; then
 	text="Syncing repositories"
 	echo -e "${green}${text}...${normal}"
-	if [ $X -eq 0 ]; then
+	if [ ! $GTK ]; then
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
 	else
@@ -312,7 +315,7 @@ fi
 # Upgrade
 text="Checking for upgrades"
 echo -e "${green}${text}...${normal}"
-if [ $X -gt 0 ]; then
+if [ $GTK ]; then
 
 	# first check for news
 	news=$( emerge -q --check-news )
@@ -350,7 +353,7 @@ if [ $X -gt 0 ]; then
 	cat "${tmpFile["logs"]}"
 
 	if [ ! -s "${tmpFile["logs"]}" ]; then
-		prepare_for_exit && UPGRADE_NEEDED=0
+		prepare_for_exit && set_param 'u' 0
 
 	else
 		rm "${tmpFile["result"]}"
@@ -368,7 +371,7 @@ if [ $X -gt 0 ]; then
 		# Build time estimation
 		avg=0   #average estimations
 		nb=0    #number of found packages
-		if [ $ESTIMATE -gt 0 ]; then
+		if [ $ESTIMATE ]; then
 			
 			# estimate each time
 			for i in ${!list[@]}; do
@@ -407,7 +410,7 @@ if [ $X -gt 0 ]; then
 		title="Here are packages that would be merged"
 		text="Uncheck packages you want to exclude\n"
 		text+=$( sed '/^\[/d' "${tmpFile["logs"]}" )
-		if [ $ESTIMATE -gt 0 ]; then
+		if [ $ESTIMATE ]; then
 			choix=( $(
 				for i in ${!list[@]}; do
 					echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
@@ -467,7 +470,7 @@ if [ $X -gt 0 ]; then
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
 			sleep 1
-			edited=0
+			unset edited
 
 			new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
 			[ ! -z $new ] && [ $new -gt $emerging ] && emerging=$new && edited=1
@@ -475,7 +478,7 @@ if [ $X -gt 0 ]; then
 			new=$( get_line Installing | awk -F[\(\)\ ] '{ print $4 }' )
 			[ ! -z $new ] && [ $new -gt $installing ] && installing=$new && edited=1
 
-			if [ $edited -gt 0 ]; then
+			if [ $edited ]; then
 				cur_package=$( get_line | awk -F' ' '{ print $6 }' )
 				cur_package=${cur_package%-[0-9]*}
 				
@@ -560,8 +563,6 @@ if [ $X -gt 0 ]; then
 
 # Standard upgrade
 else
-	[ $QUIET -eq 0 ] && QUIET='' || QUIET='q'
-	[ $VERBOSE -eq 0 ] && VERBOSE='' || VERBOSE='v'
 	emerge -a${QUIET}${VERBOSE}uDN ${SET}
 
 	if [ $? -gt 0 ]; then
@@ -574,10 +575,11 @@ fi
 
 # Depclean
 if [ -z $exclude ] && [ "$SET" = "@world" ]; then
-	text="Preparing for cleaning"
-	echo -e "${green}${text}...${normal}"
-	if [ $X -gt 0 ]; then
-		
+
+	if [ $GTK ]; then
+		text="Preparing for cleaning"
+		echo -e "${green}${text}...${normal}"
+			
 		# first check
 		( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
 		sleep .5
@@ -652,22 +654,24 @@ if [ -z $exclude ] && [ "$SET" = "@world" ]; then
 
 			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 			[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && exit 5
-			if [ ! -s "${tmpFile["logs"]}" ] && [ $UPGRADE_NEEDED -gt 0 ]; then
-				UPGRADE_NEEDED=0
+			if [ ! -s "${tmpFile["logs"]}" ] && [ $UPGRADE_NEEDED ]; then
+				set_param 'u' 0
 			else
-				UPGRADE_NEEDED=1 && cat "${tmpFile["logs"]}"
+				set_param 'u' 1 && cat "${tmpFile["logs"]}"
 			fi
 		fi
 
 	# Standard cleaning
 	else
+		text="Cleaning your system"
+		echo -e "${green}${text}...${normal}"
 		emerge -a${QUIET}${VERBOSE}c || exit 5
 	fi
 fi
 
 # Finished
-[ $UPGRADE_NEEDED -eq 0 ] && text="Your system is already up to date" || text="Your system is now up to date"
-[ $X -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}" && prepare_for_exit
+[ $UPGRADE_NEEDED ] && text="Your system is now up to date" || text="Your system is already up to date"
+[ $GTK ] && zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}" && prepare_for_exit
 echo "${text}"
 
 exit 0
