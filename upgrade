@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Script to sync && upgrade Gentoo portage
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
@@ -530,13 +530,12 @@ if [ $GTK ]; then
 			message=( $( grep -Fn '>>>' "${portage_log}" | awk -F: '{print $1}' ) )
 			for i in ${!message[@]}; do
 				[ $last_line -ge ${message[$i]} ] && continue
-				#get package
+				#get package name
 				package[$i]=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" )
 				start=$(( ${message[$i]}+2 ))
 				[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
 
 				#print message
-				#sed -n "${start},${end}p" "${portage_log}" | sed 's/^\(ERROR.*\)$/<span color="red">\1<\/span>/' | sed 's/^\(WARN.*\)$/<span color="orange">\1<\/span>/' | sed 's/^\(LOG.*\)$/<span color="green">\1<\/span>/' \
 				sed -n "${start},${end}p" "${portage_log}" \
 				| zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --title "Messages from ${package[$i]}"
 			done
@@ -600,7 +599,8 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 			choix=( $(
 				for i in ${!package[@]}; do
 					echo -e "TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
-				done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${remove} packages would be unmerged" --text "Uncheck package you want to preserve" ) )
+				done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${remove} packages would be unmerged" --text "Uncheck package you want to preserve" )
+			)
 			if [ "$?" -gt 0 ] || [ ${#choix[@]} -eq 0 ]; then
 				echo "Aborted"
 				prepare_for_exit
@@ -619,7 +619,7 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 					fi
 				done
 			fi
-			unset remove package selected protected omitted
+			unset remove package selected protected omitted choix
 
 			# finally clean
 			text="Cleaning your system"
