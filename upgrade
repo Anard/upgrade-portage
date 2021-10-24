@@ -326,14 +326,14 @@ if [ $GTK ]; then
 			read date[$i] title[$i] <<< $( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | awk '{for (i=2; i<=NF; i++) printf "%s " ,$i }' )
 		done
 
-		choix=( $(
+		choice=( $(
 			for i in ${!index[@]}; do
 				echo -e "FALSE\n${index[$i]}\n${title[$i]}\n${date[$i]}"
 			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'read' --column 'index' --column 'Title' --column 'Date' --hide-column 2 --separator ' ' --title "Here are news" --text "Check those you want to read now" ) )
 
-		for i in ${!choix[@]}; do
-			eselect news read ${choix[$i]} | zenity --width=500 --window-icon "${iconPath}" --text-info --height=300 --title "${title[$i]}"
-			[ $? -gt 0 ] && eselect news unread ${choix[$i]}
+		for i in ${!choice[@]}; do
+			eselect news read ${choice[$i]} | zenity --width=500 --window-icon "${iconPath}" --text-info --height=300 --title "${title[$i]}"
+			[ $? -gt 0 ] && eselect news unread ${choice[$i]}
 		done
 	fi	
 
@@ -401,20 +401,20 @@ if [ $GTK ]; then
 		text="Uncheck packages you want to exclude\n"
 		text+=$( sed '/^\[/d' "${tmpFile["logs"]}" )
 		if [ $ESTIMATE ]; then
-			choix=( $(
+			choice=( $(
 				for i in ${!list[@]}; do
 					echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
 				done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' --separator ' ' --title "${title}" --text "${text}" )
 			)
 		else
-			choix=( $(
+			choice=( $(
 				for i in ${!list[@]}; do
 					echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}"
 				done | zenity --width 600 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "${title}" --text "${text}" )
 			)
 		fi
 		
-		if [ "$?" -gt 0 ] || [ ${#choix[@]} -eq 0 ]; then
+		if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
 			echo "Aborted"
 			prepare_for_exit
 			exit 1
@@ -422,10 +422,10 @@ if [ $GTK ]; then
 
 		# get excluded packages list
 		exclude=""
-		if [[ "${package[@]}" != "${choix[@]}" ]]; then
+		if [[ "${package[@]}" != "${choice[@]}" ]]; then
 			j=0
 			for i in ${!list[@]}; do
-				if [ "${choix[$j]}" = "${package[$i]}" ]; then
+				if [ "${choice[$j]}" = "${package[$i]}" ]; then
 					j=$(( $j+1 ))
 				else
 					exclude+=" --exclude ${package[$i]}"
@@ -437,7 +437,7 @@ if [ $GTK ]; then
 
 		# total time
 		total=0
-		for i in ${!choix[@]}; do
+		for i in ${!choice[@]}; do
 			[ "${time_h[$i]}" = "???" ] && add=$avg || add=${time[$i]}
 			total=$(( $total+$add ))
 		done
@@ -473,8 +473,8 @@ if [ $GTK ]; then
 				cur_package=${cur_package%-[0-9]*}
 				
 				[ -z $current ] || last=$current
-				for current in ${!choix[@]}; do
-					if [ "${choix[$current]}" = "${cur_package}" ]; then
+				for current in ${!choice[@]}; do
+					if [ "${choice[$current]}" = "${cur_package}" ]; then
 						if [ $installing -eq $emerging ]; then
 							[ ${time[$current]} -eq 0 ] && add=$(( 8*${avg}/10 )) || add=0
 						elif [ $installing -gt 0 ]; then
@@ -522,7 +522,7 @@ if [ $GTK ]; then
 
 		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 
-		unset choix time time_h elapsed_h total
+		unset choice time time_h elapsed_h total
 
 		# Print messages from emerging
 		if [ -f "${portage_log}" ]; then
@@ -596,12 +596,12 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 				read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
 			done
 			
-			choix=( $(
+			choice=( $(
 				for i in ${!package[@]}; do
 					echo -e "TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
 				done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${remove} packages would be unmerged" --text "Uncheck package you want to preserve" )
 			)
-			if [ "$?" -gt 0 ] || [ ${#choix[@]} -eq 0 ]; then
+			if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
 				echo "Aborted"
 				prepare_for_exit
 				exit 1
@@ -609,17 +609,17 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 
 			# get excluded packages list
 			exclude=""
-			if [[ "${package[@]}" != "${choix[@]}" ]]; then
+			if [[ "${package[@]}" != "${choice[@]}" ]]; then
 				j=0
 				for i in ${!package[@]}; do
-					if [ "${choix[$j]}" = "${package[$i]}" ]; then
+					if [ "${choice[$j]}" = "${package[$i]}" ]; then
 						j=$(( $j+1 ))
 					else
 						exclude+=" --exclude ${package[$i]}"
 					fi
 				done
 			fi
-			unset remove package selected protected omitted choix
+			unset remove package selected protected omitted choice
 
 			# finally clean
 			text="Cleaning your system"
