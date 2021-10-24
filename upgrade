@@ -1,4 +1,5 @@
 #!/bin/sh
+version="1.03-r1"; script_name=`basename "$0"`
 # Script to sync && upgrade Gentoo portage
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
@@ -173,10 +174,13 @@ Usage : ${Blue}upgrade${normal} [${Green}OPTIONS${normal}] [${Green}@SET${normal
 
 ${Green}OPTIONS${normal} :
         ${bold}-h|--help${normal}	Print this help and exit
+        ${bold}--version${normal}    Print this script's current version and exit
+        
         ${bold}-q|--quiet${normal}    	Run quietly
         ${bold}-v|--verbose${normal}    Run verbosely
         ${bold}-x${normal}    Run graphically
 
+        
 ${Green}SET${normal} :
 	Set to upgrade, if not set ${green}@world${normal} will be used
 
@@ -190,17 +194,21 @@ HELP
 		SET=$1
 		;;
 
-	 '-x')
+	 "-x")
 		set_param 'x' 1 && set_param 'q' 1 && set_param 'v' 0 && break || exit 255
 		;;
-	 '-q'|'--quiet')
+	 "-q"|"--quiet")
 		set_param 'q' 1 || exit 255
 		;;
-	 '-v'|'--verbose')
+	 "-v"|"--verbose")
 		set_param 'v' 1 || exit 255
 		;;
+	 "--version")
+		echo -e "${Orange}${script_name}${normal} for portage based system, version ${orange}${version}${normal}"
+		exit 0
+		;;
 
-	 '-qv'|'-vq')
+	 "-qv"|"-vq")
 		set_param 'q' 1 && set_param 'v' 1 || exit 255
 		;;
 
