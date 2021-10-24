@@ -15,6 +15,7 @@ Prefered way is to use [overlay](https://github.com/Anard/anard-overlay) and eme
 
 ## Dependencies
 ```
+portage
 zenity for gtk
 a askpass program for sudo for .desktop
 ```
