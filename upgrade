@@ -529,10 +529,10 @@ if [ $GTK ]; then
 			# $message is a table of a new messages lines
 			message=( $( grep -Fn '>>>' "${portage_log}" | awk -F: '{print $1}' ) )
 			for i in ${!message[@]}; do
-				if [ $last_line -ge ${message[$i]} ]; then continue; fi
+				[ $last_line -ge ${message[$i]} ] && continue
 				#get package
 				package[$i]=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" )
-				start=$(( ${message[$i]}+1 ))
+				start=$(( ${message[$i]}+2 ))
 				[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
 
 				#print message
