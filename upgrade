@@ -226,9 +226,10 @@ text="Checking repositories..."
 echo -e "${green}${text}${normal}"
 for i in "${!repos[@]}"; do
 	if [ -f "${repos[$i]}/Manifest" ]; then
-		time[$i]=$( date -d `grep TIMESTAMP "${repos[$i]}/Manifest" | cut -d ' ' -f2` "+%s" )
+		timestamp=$( cat "${repos[$i]}/metadata/timestamp" )
+		time[$i]=$( date -d "${timestamp}" "+%s" )
 		text="Last sync for ${repos[$i]##*/} is `date -d @${time[$i]}`"
-		[ $QUIET ] && [ ! $VERBOSE ] || echo "${text}"
+		[ ! $QUIET ] || [ $VERBOSE ] && echo "${text}"
 
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
 			text1="Sync date for ${repos[$i]##*/} is newer than now"
