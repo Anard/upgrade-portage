@@ -1,6 +1,5 @@
 Graphical interface via zenity
 - skip pretend & use ask ?
-- 'sleep' cmd uses most resources ?
 - test errors in zenity : checking tmp zenity file existence fails as if emerge fails, zenity doesn't stop (retry pgrep emerge ?)
 - check progress bar while depcleaning
 - Clean code (more functions when possible etc)

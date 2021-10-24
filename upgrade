@@ -644,7 +644,7 @@ if [ -z $exclude ] && [ "$SET" = "@world" ]; then
 
 			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 			[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && exit 5
-			if [ ! -s "${tmpFile["logs"]}" ] && [ $UPGRADE_NEEDED ]; then
+			if [ ! -s "${tmpFile["logs"]}" ] && [ "$exclude" = "" ]; then
 				set_param 'u' 0
 			else
 				set_param 'u' 1 && cat "${tmpFile["logs"]}"
