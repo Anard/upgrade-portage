@@ -5,5 +5,3 @@ Graphical interface via zenity
 - Clean code (more functions when possible etc)
 - get colored/bold output from emerge to zenity
 - remove some blank lines when displaying portage messages in zenity
-
-Check system used and use the correct way to upgrade system (portage, apt, rpm, pacman...)
