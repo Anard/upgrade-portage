@@ -53,18 +53,27 @@ get_line () {
 }
 
 # Function to print log line in zenity
-## USAGE: print_line [OPTION]
+## USAGE: print_line [OPTION] [...]
 ## OPTION:	-n: no end of line
 ##			-r REMOVE:	remove REMOVE from print
 print_line () {
-	if [ $# -gt 0 ]; then
-		if [ "$1" = "-n" ]; then
-			echo -ne `grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed 's/*//g'`
-		elif [ "$1" = "-r" ] && [ $# -eq 2 ]; then
-			echo `grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed 's/*//g' | sed "s/$2//"`
-		fi
-	else echo `grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed 's/*//g'`
-	fi
+	option=""; remove="^"
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		 "-n")
+		 	option="-ne"
+		 	;;
+		 "-r")
+		 	shift
+		 	remove="$1"
+		 	;;
+		 *)
+		 	;;
+		esac
+		shift
+	done
+
+	echo ${option} `grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed '/*//g' | sed "s/${remove}//"`
 }
 
 # Function to kill commands and delete tmp files
@@ -644,7 +653,7 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 			while [ -f "${tmpFile["zenity"]}" ]
 			do
 				sleep .5
-				print_line -r 'Unmerging in: 5 4 3 2 1>>> '
+				print_line -r "Unmerging in: 5 4 3 2 1>>> "
 				new=`get_line "Unmerging (" | sed 's/Unmerging in: 5 4 3 2 1>>> //' | awk -F[\(\)\ ] '{ print $4 }'`
 				[ "$new" = "" ] || cleaning=$new
 
