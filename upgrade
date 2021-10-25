@@ -593,7 +593,7 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 		cat "${tmpFile["logs"]}"
 
 		if [ -s "${tmpFile["logs"]}" ]; then
-			remove=$( sed -n '$p' "${tmpFile["logs"]}" | awk -F ' ' '{print $4}' )
+			remove=$( sed -n '$p' "${tmpFile["logs"]}" | awk -F' ' '{print $4}' )
 			# remove unwanted lines from output
 			sed -i '/\//!d' "${tmpFile["logs"]}"
 			sed -i '/=/d' "${tmpFile["logs"]}"
@@ -641,11 +641,11 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 			do
 				sleep .5
 				print_line
-				new=`get_line "Unmerging (" | awk -F[\(\)\ ] '{ print $4 }'`
+				new=`get_line "Unmerging (" | sed 's/Unmerging in: 5 4 3 2 1>>> //' | awk -F[\(\)\ ] '{ print $4 }'`
 				[ "$new" = "" ] || cleaning=$new
 
 				if [ -z $total ]; then
-					[ "$new" = "" ] || total=`get_line "Unmerging (" | awk -F[\(\)\ ] '{ print $6 }'`
+					[ "$new" = "" ] || total=`get_line "Unmerging (" | sed 's/Unmerging in: 5 4 3 2 1>>> //' | awk -F[\(\)\ ] '{ print $6 }'`
 				fi
 				[ -z $total ] || percent=$(( 100*($cleaning-1)/$total ))
 				echo "$percent"
