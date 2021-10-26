@@ -73,7 +73,7 @@ print_line () {
 		shift
 	done
 
-	echo ${option} `grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed '/*//g' | sed "s/${remove}//"`
+	echo ${option} $( grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed 's/*//g' | sed "s/${remove}//" )
 }
 
 # Function to kill commands and delete tmp files
