@@ -350,8 +350,8 @@ if [ $GTK ]; then
 
 		choice=( $(
 			for i in ${!index[@]}; do
-				echo -e "FALSE\n${index[$i]}\n${title[$i]}\n${date[$i]}"
-			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'read' --column 'index' --column 'Title' --column 'Date' --hide-column 2 --separator ' ' --title "Here are news" --text "Check those you want to read now" ) )
+				echo -e "TRUE\n${index[$i]}\n${title[$i]}\n${date[$i]}"
+			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'read' --column 'index' --column 'Title' --column 'Date' --hide-column 2 --separator ' ' --title "${#index[@]} news need reading" --text "Keep checked those you want to read now" ) )
 
 		for i in ${!choice[@]}; do
 			eselect news read ${choice[$i]} | zenity --width=500 --window-icon "${iconPath}" --text-info --height=300 --title "${title[$i]}"
@@ -419,7 +419,7 @@ if [ $GTK ]; then
 		else avg=10
 		fi
 		
-		title="Here are packages that would be merged"
+		title="${#list[@]} packages should be merged"
 		text="Uncheck packages you want to exclude\n"
 		text+=$( sed '/^\[/d' "${tmpFile["logs"]}" )
 		if [ $ESTIMATE ]; then
@@ -621,7 +621,7 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 			choice=( $(
 				for i in ${!package[@]}; do
 					echo -e "TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
-				done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${remove} packages would be unmerged" --text "Uncheck package you want to preserve" )
+				done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${remove} packages should be unmerged" --text "Uncheck package you want to preserve" )
 			)
 			if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
 				echo "Aborted"
