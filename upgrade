@@ -1,5 +1,5 @@
 #!/bin/sh
-version="1.03-r1"; script_name=`basename "$0"`
+version="1.03-r3"; script_name=`basename "$0"`
 # Script to sync && upgrade Gentoo portage
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
@@ -397,7 +397,7 @@ if [ $GTK ]; then
 			version[$i]=${list[$i]#${package[$i]}-}
 			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
-			grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="* ${action[$i]} *"
+			grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
 		done
 
 		# Build time estimation
@@ -581,7 +581,7 @@ if [ $GTK ]; then
 		[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && exit 4
 
 		if [ ! -z "${exclude}" ] || [ ! "${SET}" = "@world" ]; then
-			text="Upgrade have terminated"
+			text="Partial upgrade is done"
 			zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}"
 			exit 0
 		fi
