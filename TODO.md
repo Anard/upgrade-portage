@@ -1,28 +1,8 @@
 Graphical interface via zenity
 - skip pretend & use ask ?
 
-- separate 'important' messages from packages messages *
-- check errors handling from emerge
-- check new portage messages with less blank line
-<<<<<<< HEAD
-- check progress bar estimation
-- repair an upgrade of portage and build it first after ask
-after syncin, this message :
+- separate 'important' messages from packages messages :
 ```
- * An update to portage is available. It is _highly_ recommended
- * that you update portage now, before any other packages are updated.
-
- * To update portage, run 'emerge --oneshot sys-apps/portage' now.
-```
-- eix-update after sync if function exists
-=======
-- check progress bar estimation => choice is longer than emerge list
->>>>>>> 0ad99fa (todo)
-
-- Clean code (more functions when possible etc)
-
-- get colored/bold output from emerge to zenity
-
  * Messages for package sys-kernel/linux-firmware-20210919:
  * Building using saved configfile "/etc/portage/savedconfig/sys-kernel/linux-firmware-20210919"
  * Your configuration for sys-kernel/linux-firmware-20210919 has been saved in 
@@ -42,3 +22,22 @@ after syncin, this message :
  * IMPORTANT: config file '/etc/portage/savedconfig/sys-kernel/linux-firmware-20210919' needs updating.
  * See the CONFIGURATION FILES and CONFIGURATION FILES UPDATE TOOLS
  * sections of the emerge man page to learn how to update config files.
+```
+
+- check errors handling from emerge
+- check new portage messages with less blank line
+- track an upgrade of portage and build it first after ask
+after syncin :
+```
+ * An update to portage is available. It is _highly_ recommended
+ * that you update portage now, before any other packages are updated.
+
+ * To update portage, run 'emerge --oneshot sys-apps/portage' now.
+```
+
+- eix-update after sync if function exists
+- check progress bar estimation => choice is longer than emerge list
+
+- Clean code (more functions when possible etc)
+
+- get colored/bold output from emerge to zenity
