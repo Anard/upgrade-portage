@@ -320,7 +320,12 @@ if [ $SYNC ]; then
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
 	else
-		( touch "${tmpFile["zenity"]}" && emerge --sync 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
+		(
+			touch "${tmpFile["zenity"]}"
+			emerge --sync 2>&1 > "${tmpFile["logs"]}" && type eix &> /dev/null && eix-update
+			echo $? > "${tmpFile["result"]}"
+			rm "${tmpFile["zenity"]}"
+		) &
 		sleep .5
 		while [ -f "${tmpFile["zenity"]}" ]
 		do
@@ -360,7 +365,12 @@ if [ $GTK ]; then
 	fi	
 
 	# next, check for upgrades
-	( touch "${tmpFile["zenity"]}" && emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
+	(
+		touch "${tmpFile["zenity"]}"
+		emerge -pquDN ${SET} 2>&1 > "${tmpFile["logs"]}"
+		echo $? > "${tmpFile["result"]}"
+		rm "${tmpFile["zenity"]}"
+	) &
 	sleep .5
 	dots=""
 	while [ -f "${tmpFile["zenity"]}" ]
@@ -471,7 +481,12 @@ if [ $GTK ]; then
 		portage_log="/var/log/portage/elog/summary.log"
 		[ -f "${portage_log}" ] && last_line=$( wc -l < "${portage_log}" ) || last_line=0
 
-		( touch "${tmpFile["zenity"]}" && emerge -quDN ${exclude} ${SET} 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
+		(
+			touch "${tmpFile["zenity"]}"
+			emerge -quDN ${exclude} ${SET} 2>&1 > "${tmpFile["logs"]}"
+			echo $? > "${tmpFile["result"]}"
+			rm "${tmpFile["zenity"]}"
+		) &
 		sleep 1
 		# elapsed for calculating percentage & elapsed_h to print current package's merge time
 		emerging=0; installing=0
@@ -592,7 +607,11 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 		echo -e "${green}${text}...${normal}"
 			
 		# first check
-		( touch "${tmpFile["zenity"]}" && emerge -pqc 2>&1 > "${tmpFile["logs"]}"; rm "${tmpFile["zenity"]}" ) &
+		(
+			touch "${tmpFile["zenity"]}"
+			emerge -pqc 2>&1 > "${tmpFile["logs"]}"
+			rm "${tmpFile["zenity"]}"
+		) &
 		sleep .5
 		dots=""
 		while [ -f "${tmpFile["zenity"]}" ]
@@ -646,7 +665,12 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 			# finally clean
 			text="Cleaning your system"
 			echo -e "${green}${text}...${normal}"
-			( touch "${tmpFile["zenity"]}" && emerge -qc $exclude 2>&1 > "${tmpFile["logs"]}"; echo $? > "${tmpFile["result"]}"; rm "${tmpFile["zenity"]}" ) &
+			(
+				touch "${tmpFile["zenity"]}"
+				emerge -qc $exclude 2>&1 > "${tmpFile["logs"]}"
+				echo $? > "${tmpFile["result"]}"
+				rm "${tmpFile["zenity"]}"
+			) &
 			sleep .5
 			cleaning=0
 			percent=0
