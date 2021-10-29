@@ -35,7 +35,7 @@ after syncin :
  * To update portage, run 'emerge --oneshot sys-apps/portage' now.
 ```
 
-- eix-update after sync if function exists
+x eix-update after sync if function exists
 - check progress bar estimation => choice is longer than emerge list
 
 - Clean code (more functions when possible etc)
