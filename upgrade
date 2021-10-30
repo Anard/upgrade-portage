@@ -169,9 +169,9 @@ print_human_time () {
 # Get average merge time from qlop
 ## USAGE: get_av_merge package
 get_av_merge () {
-	if [ $# gt 0 ]; then
+	if [ $# -gt 0 ]; then
 		package=$1
-		return $( qlop -amMC "$package" | awk -F' ' '{print $2}' )
+		echo $( qlop -amMC "$package" | awk -F' ' '{print $2}' )
 	fi
 }
 
@@ -334,7 +334,10 @@ if [ $SYNC ]; then
 			emerge --sync 2>&1 > "${tmpFile["logs"]}"
 			res=$?
 			echo $res > "${tmpFile["result"]}"
-			[ $res -eq 0 ] && type eix &> /dev/null && eix-update
+			if [ $res -eq 0 ] && type eix &> /dev/null; then
+				echo "Updating eix database" >> "${tmpFile["logs"]}"
+				eix-update
+			fi
 			rm "${tmpFile["zenity"]}"
 		) &
 		sleep .5
@@ -354,7 +357,7 @@ if [ $SYNC ]; then
 			text2="An update to portage is avalaible, it's <span color=\"orange\">highly</span> recommended to do it now. Are you OK ?"
 			if zenity --width=300 --window-icon "${iconPath}" --question --title "${text1}" --text "${text2}"; then
 				if [ $ESTIMATE ]; then
-					time=$( get_av_merge "${package[$i]}" )
+					time=$( get_av_merge sys-apps/portage )
 					if [ -z $time ]; then
 						time=0
 					else
@@ -494,13 +497,16 @@ if [ $GTK ]; then
 		nb=0    #number of found packages
 		if [ $ESTIMATE ]; then
 			# estimate each time
-			echo "Estimating merge time"
+			echo -e "${green}Estimating merge time...${normal}"
 			for i in ${!list[@]}; do
 				time[$i]=$( get_av_merge "${package[$i]}" )
 				if [ -z ${time[$i]} ]; then
+					echo "Merge time for ${package[$i]} unknown"
 					time[$i]=0
 					time_h[$i]='???'
 				else
+					echo "Average merge time for ${package[$i]} is ${time[$i]}s"
+					
 					avg=$(( $avg+${time[$i]} ))
 					nb=$(( $nb+1 ))
 
