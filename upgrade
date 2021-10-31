@@ -185,7 +185,14 @@ zenity_upgrade () {
 	UP=$1
 
 	# First check
-	text="Checking for upgrades"
+	case $UP in
+	 @*)
+	 	text="Checking for upgrades"
+	 	;;
+	 *)
+	 	text="Checking for ${UP} upgrade"
+	 	;;
+	esac
 	echo -e "${green}${text}...${normal}"
 	(
 		touch "${tmpFile["zenity"]}"
@@ -218,8 +225,9 @@ zenity_upgrade () {
 		package[$i]=${list[$i]%-[0-9]*}
 		version[$i]=${list[$i]#${package[$i]}-}
 		action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
-		current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 		grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
+		current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
+		time_h[$i]=""
 	done
 
 	# Build time estimation
@@ -254,43 +262,63 @@ zenity_upgrade () {
 	else avg=10
 	fi
 	
-	title="${#list[@]} packages should be merged"
-	text="Uncheck packages you want to exclude\n"
+	case $UP in
+	 @*)
+		title="${#list[@]} packages should be merged"
+		text="Uncheck packages you want to exclude\n"
+		check="TRUE\n"
+		options="--checklist"
+		[ $ESTIMATE ] || options="${options} --hide-column 6"
+		;;
+	 *)
+	 	pack=${UP#*/}
+		title="${pack^} needs update"
+		text="${#list[@]} packages would be merged\n"
+		check=""
+		options=""
+		[ $ESTIMATE ] || options="${options} --hide-column 5"
+		;;
+	esac
+	
 	text+=$( sed '/^\[/d' "${tmpFile["logs"]}" )
-	if [ $ESTIMATE ]; then
-		choice=( $(
-			for i in ${!list[@]}; do
-				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
-			done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' --separator ' ' --title "${title}" --text "${text}" )
-		)
-	else
-		choice=( $(
-			for i in ${!list[@]}; do
-				echo -e "TRUE\n${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}"
-			done | zenity --width 600 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --separator ' ' --title "${title}" --text "${text}" )
-		)
-	fi
+	
+	choice=( $(
+		for i in ${!list[@]}; do
+			echo -e "${check}${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
+		done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' ${options} --separator ' ' --title "${title}" --text "${text}" )
+	)
 	
 	if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
 		echo "Aborted"
 		prepare_for_exit
-		return 11
+		case $UP in
+		 @*)
+			return 11
+			;;
+		 *)
+			return 1
+			;;
+		esac
 	fi
 
 	# get excluded packages list
 	exclude=""
-	if [[ "${package[@]}" != "${choice[@]}" ]]; then
-		j=0
-		for i in ${!list[@]}; do
-			if [ "${choice[$j]}" = "${package[$i]}" ]; then
-				j=$(( $j+1 ))
-			else
-				exclude+=" --exclude ${package[$i]}"
-				time=( ${time[@]:0:$i} ${time[@]:$i+1} )
-			fi
-		done
+	if [ -z $check ]; then
+		choice=( ${list[@]} )
+	else
+		if [[ "${package[@]}" != "${choice[@]}" ]]; then
+			j=0
+			for i in ${!list[@]}; do
+				if [ "${choice[$j]}" = "${package[$i]}" ]; then
+					j=$(( $j+1 ))
+				else
+					exclude+=" --exclude ${package[$i]}"
+					time=( ${time[@]:0:$i} ${time[@]:$i+1} )
+				fi
+			done
+		fi
+		unset list package version action current
 	fi
-	unset list package version action current
 
 	# total time
 	total=0
@@ -300,7 +328,17 @@ zenity_upgrade () {
 	done
 
 	# finally emerge
-	text="Upgrading your system"
+	case $UP in
+	 "@world")
+		text="Upgrading your system"
+		;;
+	 @*)
+		text="Upgrading ${UP}"
+		;;
+	 *)
+		text="Upgrading ${pack^}"
+		;;
+	esac
 	echo -e "${green}${text}...${normal}"
 	# get portage log file size
 	portage_log="/var/log/portage/elog/summary.log"
@@ -626,7 +664,8 @@ if [ $GTK ]; then
 	if [ $UPDATE_PORTAGE ]; then
 	
 		zenity_upgrade sys-apps/portage
-	
+		[ $? -gt 10 ] && exit $(( $?-10 ))
+		
 #		text1="Portage needs update"
 #		text2="An update to portage is avalaible, it's <span color=\"orange\">highly</span> recommended to do it now. Are you OK ?"
 #		if zenity --width=300 --window-icon "${iconPath}" --question --title "${text1}" --text "${text2}"; then
@@ -701,19 +740,12 @@ if [ $GTK ]; then
 #				
 #			done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
 #		fi
+
+
 	fi
-
-
-
-
-
-
-
-
 
 	zenity_upgrade ${SET}
 	case $? in
-
 	 0) # all done
 	 	;;
 	 1) # nothing to merge
@@ -728,10 +760,7 @@ if [ $GTK ]; then
 	 	exit $(( $?-10 ))
 	 	;;
 	esac
-	
-	
-	
-	
+		
 # Standard upgrade
 else
 	text="Checking for upgrades"
