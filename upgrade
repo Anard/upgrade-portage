@@ -207,7 +207,7 @@ zenity_upgrade () {
 	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while checking dependencies, please check logs" && prepare_for_exit && return 13
 
 	# nothing to merge
-	[ -s "${tmpFile["logs"]}" ] || prepare_for_exit && return 1
+	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
 	
 	rm "${tmpFile["result"]}"
 	
@@ -574,7 +574,7 @@ if [ $SYNC ]; then
 			res=$?
 			echo $res > "${tmpFile["result"]}"
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
-				echo "Updating eix database" >> "${tmpFile["logs"]}"
+				echo "Updating eix database"
 				eix-update
 			fi
 			rm "${tmpFile["zenity"]}"
