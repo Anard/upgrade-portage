@@ -446,13 +446,18 @@ zenity_upgrade () {
 	cat "${tmpFile["logs"]}"
 	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && return 14
 
+	ret=0
+	if grep "!!! existing preserved libs found" "${tmpFile["logs"]}" &> /dev/null; then
+		ret=3
+	fi
+
 	prepare_for_exit
 
 	if [ ! -z "${exclude}" ] || [ ! "${UP}" = "@world" ]; then
-		return 2
+		ret=2
 	fi
 
-	return 0
+	return $ret
 }
 
 ########
@@ -668,82 +673,6 @@ if [ $GTK ]; then
 		zenity_upgrade sys-apps/portage
 		[ $? -gt 10 ] && exit $(( $?-10 ))
 		
-#		text1="Portage needs update"
-#		text2="An update to portage is avalaible, it's <span color=\"orange\">highly</span> recommended to do it now. Are you OK ?"
-#		if zenity --width=300 --window-icon "${iconPath}" --question --title "${text1}" --text "${text2}"; then
-#			if [ $ESTIMATE ]; then
-#				time=$( get_av_merge sys-apps/portage )
-#				if [ -z $time ]; then
-#					time=0
-#				else
-#					declare -A time_hum
-#					get_human_time time_hum $time
-#					time_h=$( print_human_time time_hum )
-#					unset time_hum
-#				fi
-#			fi
-#			
-#			text="Upgrading portage"
-#			echo -e "${green}${text}...${normal}"
-#			(
-#				touch "${tmpFile["zenity"]}"
-#				emerge -q1 portage 2>&1 > "${tmpFile["logs"]}"
-#				echo $? > "${tmpFile["result"]}"
-#				rm "${tmpFile["zenity"]}"
-#			) &
-#			sleep .5
-#			percent=0; emerging=0
-#			declare -A elapsed_h=( ['machine']=0 ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
-#			while [ -f "${tmpFile["zenity"]}" ]
-#			do
-#				sleep 1
-#				
-#				case $emerging in
-#				 0)
-#				 	new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
-#					[ -z $new ] || emerging=1
-#					;;
-#				 1)
-#				 	[ $percent -eq 0 ] && new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
-#					[ -z $new ] || emerging=2
-#					;;
-#				*)
-#					;;
-#				esac
-#
-#				if [ $emerging -gt 0 ]; then
-#					# real elapsed time
-#					elapsed_h["machine"]=$(( ${elapsed_h["machine"]}+1 ))
-#					
-#					# recalculate percentage
-#					if [ $time -eq 0 ]; then
-#						[ $emerging -gt 1 ] && percent=80 || percent=20
-#					elif [ ${elapsed_h["machine"]} -lt $time ]; then
-#						percent=$(( 100* ${elapsed_h["machine"]} / $time ))
-#					fi
-#					
-#					# human readable elapsed time
-#					get_human_time --increment elapsed_h ${elapsed_h["machine"]}
-#
-#					# print line
-#					print_line -n
-#					print=$( print_human_time elapsed_h )
-#					if [ ${time[$current]} -gt 0 ]; then
-#						echo " - ${print} / ${time_h[$current]} (estimated)"
-#					else echo " - ${print}"
-#					fi
-#				else
-#					echo "# Calculating upgrade ${dots}"
-#					[ "$dots" = "..." ] && dots="" || dots="${dots}."
-#				fi
-				
-#				# finally print percentage
-#				echo "$percent"
-#				
-#			done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
-#		fi
-
-
 	fi
 
 	zenity_upgrade ${SET}
@@ -757,6 +686,10 @@ if [ $GTK ]; then
 		text="Partial upgrade is done"
 		zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}"
 		exit 0
+	 	;;
+	 3) # preserved libs
+	 	zenity_upgrade @preserved-libs
+		[ $? -gt 10 ] && exit $(( $?-10 ))
 	 	;;
 	 *) # exit with error
 	 	exit $(( $?-10 ))

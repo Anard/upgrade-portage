@@ -24,6 +24,19 @@ Graphical interface via zenity
  * sections of the emerge man page to learn how to update config files.
 ```
 
+- also handle emerge @preserved-libs
+!!! existing preserved libs:
+>>> package: media-gfx/openvdb-7.1.0-r5
+ *  - /usr/lib64/libopenvdb.so.8.0
+ *  - /usr/lib64/libopenvdb.so.8.0.1
+ *      used by /usr/bin/blender-2.93 (media-gfx/blender-2.93.2-r1)
+>>> package: media-libs/opensubdiv-3.4.4-r1
+ *  - /usr/lib64/libosdCPU.so.3.4.3
+ *      used by /usr/bin/blender-2.93 (media-gfx/blender-2.93.2-r1)
+Use emerge @preserved-rebuild to rebuild packages using these libraries
+
+- see if -t --tree option can be used in emerge to bettter understand dependencies
+
 - check errors handling from emerge
 - check new portage messages with less blank line
 - track an upgrade of portage and build it first after ask
