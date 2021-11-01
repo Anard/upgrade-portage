@@ -218,8 +218,10 @@ zenity_upgrade () {
 	
 	rm "${tmpFile["result"]}"
 	
+	messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
+	sed -i '/^\[/!d' "${tmpFile["logs"]}"
 	# list of all packages that would be merged
-	list=( $( sed '/^\[/!d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d] -f2 ) )
+	list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
 	# prepare output and ask for final choice
 	for i in ${!list[@]}; do
 		package[$i]=${list[$i]%-[0-9]*}
@@ -229,6 +231,7 @@ zenity_upgrade () {
 		current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 		time_h[$i]=""
 	done
+	
 
 	# Build time estimation
 	avg=0   #average estimations
@@ -267,8 +270,8 @@ zenity_upgrade () {
 		title="${#list[@]} packages should be merged"
 		text="Uncheck packages you want to exclude\n"
 		check="TRUE\n"
-		options="--checklist"
-		[ $ESTIMATE ] || options="${options} --hide-column 6"
+		options="--checklist --column 'merge'"
+		[ $ESTIMATE ] || options="--hide-column 6 ${options}"
 		;;
 	 *)
 	 	pack=${UP#*/}
@@ -276,16 +279,16 @@ zenity_upgrade () {
 		text="${#list[@]} packages would be merged\n"
 		check=""
 		options=""
-		[ $ESTIMATE ] || options="${options} --hide-column 5"
+		[ $ESTIMATE ] || options="--hide-column 5"
 		;;
 	esac
 	
-	text+=$( sed '/^\[/d' "${tmpFile["logs"]}" )
+	text+="${messages}"
 	
 	choice=( $(
 		for i in ${!list[@]}; do
 			echo -e "${check}${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
-		done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list --checklist --column 'merge' --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' ${options} --separator ' ' --title "${title}" --text "${text}" )
+		done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list ${options} --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' --separator ' ' --title "${title}" --text "${text}" )
 	)
 	
 	if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
@@ -637,7 +640,6 @@ if [ $SYNC ]; then
 fi
 
 # Upgrade
-
 if [ $GTK ]; then
 
 	# first check for news

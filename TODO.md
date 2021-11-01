@@ -28,12 +28,7 @@ Graphical interface via zenity
 - check new portage messages with less blank line
 - track an upgrade of portage and build it first after ask
 after syncin :
-```
- * An update to portage is available. It is _highly_ recommended
- * that you update portage now, before any other packages are updated.
-
- * To update portage, run 'emerge --oneshot sys-apps/portage' now.
-```
+	=> check a newer version of portage when no sync
 
 - check progress bar estimation => choice is longer than emerge list if exclude some packages
 
