@@ -688,7 +688,7 @@ if [ $GTK ]; then
 		exit 0
 	 	;;
 	 3) # preserved libs
-	 	zenity_upgrade @preserved-libs
+	 	zenity_upgrade @preserved-rebuild
 		[ $? -gt 10 ] && exit $(( $?-10 ))
 	 	;;
 	 *) # exit with error
