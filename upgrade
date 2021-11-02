@@ -178,8 +178,35 @@ get_av_merge () {
 	fi
 }
 
+# Emerge via zenity
+## USAGE zenity_emerge [OPTION] [PACKAGE|SET]
+zenity_emerge() {
+	[ $# -lt 1 ] && return 255
+	case $1 in
+	 -s|--sync)
+	 	ACTION='sync'
+	 	;;
+	 -c|--depclean)
+	 	ACTION='depclean'
+		;;
+	 -C|--check-depclean)
+	 	ACTION='check-depclean'
+	 	;;
+	 -k|--check)
+		[ $# -eq 2 ] || return 255
+	 	ACTION='check'
+	 	UP=$2
+	 	;;
+	 *)
+		ACTION='upgrade'
+		UP=$2
+		;;
+	esac
+
+}
+
 # Upgrade via zenity
-## USAGE: zenity_upgrade PACKAGE|SET
+## USAGE: zenity_upgrade OPTION|PACKAGE|SET
 zenity_upgrade () {
 	[ $# -eq 1 ] || return 255
 	UP=$1
