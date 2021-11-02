@@ -669,12 +669,11 @@ if [ $GTK ]; then
 
 	# update portage?
 	if [ $UPDATE_PORTAGE ]; then
-	
 		zenity_upgrade sys-apps/portage
 		[ $? -gt 10 ] && exit $(( $?-10 ))
-		
 	fi
 
+	# upgrade
 	zenity_upgrade ${SET}
 	case $? in
 	 0) # all done
