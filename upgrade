@@ -15,25 +15,25 @@ declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['zenity']="/tmp/zenity
 ###### FUNCTIONS
 set_param () {
 	case "$1" in
-	 's'|'sync')
+	 'sync')
 		[ $2 -eq 0 ] && unset SYNC || SYNC=1
 		;;
-	 'q'|'quiet')
+	 'quiet')
 		[ $2 -eq 0 ] && unset QUIET || QUIET='q'
 		;;
-	 'v'|'verbose')
+	 'verbose')
 		[ $2 -eq 0 ] && unset VERBOSE || VERBOSE='v'
 		;;
-	 'x')
+	 'gtk')
 		[ $2 -eq 0 ] && unset GTK || GTK=1
 		;;
-	 'e')
+	 'estimate')
 	 	[ $2 -eq 0 ] && unset ESTIMATE || ESTIMATE=1
 	 	;;
-	 'u')
+	 'upgrade')
 	 	[ $2 -eq 0 ] && unset UPGRADE_NEEDED || UPGRADE_NEEDED=1
 	 	;;
-	 'p')
+	 'portage')
 	 	[ $2 -eq 0 ] && unset UPDATE_PORTAGE || UPDATE_PORTAGE=1
 	 	;;
 
@@ -198,11 +198,80 @@ zenity_emerge() {
 	 	UP=$2
 	 	;;
 	 *)
-		ACTION='upgrade'
-		UP=$2
+	 	ACTION='upgrade'
+	 	UP=$1
 		;;
 	esac
 
+	echo -e "${green}${title}...${normal}"
+	(
+		touch "${tmpFile["zenity"]}"
+		case $ACTION in
+		 'sync')
+			emerge --sync 2>&1 > "${tmpFile["logs"]}"
+			res=$?
+			echo $res > "${tmpFile["result"]}"
+			if [ $res -eq 0 ] && type eix &> /dev/null; then
+				echo "Updating eix database"
+				eix-update
+			fi
+			;;
+		 'check')
+		 	emerge -pquDN ${UP} 2>&1 > "${tmpFile["logs"]}"
+		 	echo $? > "${tmpFile["result"]}"
+		 	;;
+		esac
+		rm "${tmpFile["zenity"]}"
+	) &
+	sleep .5
+	dots=""
+		case $ACTION in
+		 'sync')
+		 	options="--pulsate"
+		 	title="Syncing repositories"
+		 	text=""
+		 	slp=.5
+		 	;;
+		 'check')
+			case $UP in
+			 @*)
+			 	title="Checking for upgrades"
+			 	;;
+			 *)
+			 	title="Checking for ${UP} upgrade"
+			 	;;
+			esac
+			;;
+	esac
+	
+	while [ -f "${tmpFile["zenity"]}" ]; do
+		sleep $slp
+		
+		case $ACTION in
+		 'sync')
+		 	print_line
+		 	;;
+		esac
+		
+	done | zenity --width 500 --window-icon "${iconPath}" --progress --title "${title}" --text "${text}" --auto-close ${options}
+
+	case $ACTION in
+	 'sync')
+	 	funcs=( rsync emerge )
+	 	text="An error occurred while syncing, please check logs"
+	 	exCode=2
+	 	;;
+	esac
+
+	# aborted
+	if [ $? -gt 0 ]; then
+		prepare_for_exit ${funcs[@]}
+	fi
+	cat "${tmpFile["logs"]}"
+	#error
+	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "${text}" && prepare_for_exit && return ${exCode}
+
+	return 0
 }
 
 # Upgrade via zenity
@@ -214,12 +283,14 @@ zenity_upgrade () {
 	# First check
 	case $UP in
 	 @*)
-	 	text="Checking for upgrades"
+	 	title="Checking for upgrades"
 	 	;;
 	 *)
-	 	text="Checking for ${UP} upgrade"
+	 	title="Checking for ${UP} upgrade"
 	 	;;
 	esac
+	zenity_emerge --check ${UP}
+	
 	echo -e "${green}${text}...${normal}"
 	(
 		touch "${tmpFile["zenity"]}"
@@ -491,11 +562,11 @@ zenity_upgrade () {
 
 # Initialisation
 SET='@world'
-set_param 'x' 0
-set_param 'q' 0
-set_param 'v' 0
-set_param 's' 1
-set_param 'u' 1
+set_param 'gtk' 0
+set_param 'quiet' 0
+set_param 'verbose' 0
+set_param 'sync' 1
+set_param 'upgrade' 1
 
 # Get parameters
 while [ "$#" -gt 0 ]; do
@@ -529,13 +600,13 @@ HELP
 		;;
 
 	 "-x")
-		set_param 'x' 1 && set_param 'q' 1 && set_param 'v' 0 && break || exit 255
+		set_param 'gtk' 1 && set_param 'quiet' 1 && set_param 'verbose' 0 && break || exit 255
 		;;
 	 "-q"|"--quiet")
-		set_param 'q' 1 || exit 255
+		set_param 'quiet' 1 || exit 255
 		;;
 	 "-v"|"--verbose")
-		set_param 'v' 1 || exit 255
+		set_param 'verbose' 1 || exit 255
 		;;
 	 "--version")
 		echo -e "${Orange}${script_name}${normal} for portage based system, version ${orange}${version}${normal}"
@@ -543,7 +614,7 @@ HELP
 		;;
 
 	 "-qv"|"-vq")
-		set_param 'q' 1 && set_param 'v' 1 || exit 255
+		set_param 'quiet' 1 && set_param 'verbose' 1 || exit 255
 		;;
 
 	 *)
@@ -555,7 +626,7 @@ done
 
 # Check if qlop exists
 if [ $GTK ]; then
-       type qlop &> /dev/null && set_param 'e' 1 || set_param 'e' 0
+       type qlop &> /dev/null && set_param 'estimate' 1 || set_param 'estimate' 0
 fi
 
 # Get repos locations
@@ -604,7 +675,7 @@ if [ $now -lt $last ]; then
 
 	if [ $GTK ]; then
 		if ! zenity --width=300 --window-icon "${iconPath}" --question --title "${text1}" --text "${text2}" --default-cancel; then
-			set_param 's' 0
+			set_param 'sync' 0
 		fi
 	else
 		echo "${bold}${text1}${normal}. ${text2} (y/N)"
@@ -614,7 +685,7 @@ if [ $now -lt $last ]; then
 
 			case "$ans" in
 				[nN]*|'')
-					set_param 's' 0
+					set_param 'sync' 0
 					break 2
 					;;
 
@@ -635,38 +706,19 @@ fi
 
 # Sync
 if [ $SYNC ]; then
-	text="Syncing repositories"
-	echo -e "${green}${text}...${normal}"
+	title="Syncing repositories"
+	echo -e "${green}${title}...${normal}"
 	if [ ! $GTK ]; then
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
 	else
-		(
-			touch "${tmpFile["zenity"]}"
-			emerge --sync 2>&1 > "${tmpFile["logs"]}"
-			res=$?
-			echo $res > "${tmpFile["result"]}"
-			if [ $res -eq 0 ] && type eix &> /dev/null; then
-				echo "Updating eix database"
-				eix-update
-			fi
-			rm "${tmpFile["zenity"]}"
-		) &
-		sleep .5
-		while [ -f "${tmpFile["zenity"]}" ]
-		do
-			sleep .5
-			print_line
-		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
-
-		[ $? -gt 0 ] && prepare_for_exit rsync emerge
-		cat "${tmpFile["logs"]}"
-		[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while syncing, please check logs" && prepare_for_exit && exit 2
+		zenity_emerge --sync
+		ret=$? && [ $ret -gt 0 ] && exit $ret
 		
 		# upgrade portage ?
 		if [ $( grep -n 'An update to portage is available' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) ]; then
-			set_param 'p' 1
-		else set_param 'p' 0
+			set_param 'portage' 1
+		else set_param 'portage' 0
 		fi
 	fi
 fi
@@ -706,7 +758,7 @@ if [ $GTK ]; then
 	 0) # all done
 	 	;;
 	 1) # nothing to merge
-	 	set_param 'u' 0
+	 	set_param 'upgrade' 0
 	 	;;
 	 2) # partial
 		text="Partial upgrade is done"
@@ -828,9 +880,9 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
 			[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && exit 5
 			if [ ! -s "${tmpFile["logs"]}" ] && [ -z "$exclude" ]; then
-				set_param 'u' 0
+				set_param 'upgrade' 0
 			else
-				set_param 'u' 1 && cat "${tmpFile["logs"]}"
+				set_param 'upgrade' 1 && cat "${tmpFile["logs"]}"
 			fi
 		fi
 
