@@ -241,6 +241,9 @@ zenity_emerge() {
 			 	title="Checking for ${UP} upgrade"
 			 	;;
 			esac
+			options="--pulsate"
+			text=""
+			slp=.5
 			;;
 	esac
 	
@@ -250,6 +253,10 @@ zenity_emerge() {
 		case $ACTION in
 		 'sync')
 		 	print_line
+		 	;;
+		 'check')
+		 	echo "# Calculating dependencies ${dots}"
+		 	[ "$dots" = "..." ] && dots="" || dots="${dots}."
 		 	;;
 		esac
 		
@@ -261,6 +268,11 @@ zenity_emerge() {
 	 	text="An error occurred while syncing, please check logs"
 	 	exCode=2
 	 	;;
+	 'check')
+	 	funcs=( emerge )
+	 	text="An error occurred while checking dependencies, please check logs"
+	 	exCode=3
+	 	;;
 	esac
 
 	# aborted
@@ -270,6 +282,8 @@ zenity_emerge() {
 	cat "${tmpFile["logs"]}"
 	#error
 	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "${text}" && prepare_for_exit && return ${exCode}
+	
+	rm "${tmpFile["result"]}"
 
 	return 0
 }
@@ -281,41 +295,11 @@ zenity_upgrade () {
 	UP=$1
 
 	# First check
-	case $UP in
-	 @*)
-	 	title="Checking for upgrades"
-	 	;;
-	 *)
-	 	title="Checking for ${UP} upgrade"
-	 	;;
-	esac
 	zenity_emerge --check ${UP}
-	
-	echo -e "${green}${text}...${normal}"
-	(
-		touch "${tmpFile["zenity"]}"
-		emerge -pquDN ${UP} 2>&1 > "${tmpFile["logs"]}"
-		echo $? > "${tmpFile["result"]}"
-		rm "${tmpFile["zenity"]}"
-	) &
-	sleep .5
-	dots=""
-	while [ -f "${tmpFile["zenity"]}" ]
-	do
-		sleep .5
-		echo "# Calculating dependencies ${dots}"
-		[ "$dots" = "..." ] && dots="" || dots="${dots}."
-	done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
-
-	[ $? -gt 0 ] && prepare_for_exit emerge && return 11
-	cat "${tmpFile["logs"]}"
-	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while checking dependencies, please check logs" && prepare_for_exit && return 13
 
 	# nothing to merge
 	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
-	
-	rm "${tmpFile["result"]}"
-	
+		
 	messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
 	sed -i '/^\[/!d' "${tmpFile["logs"]}"
 	# list of all packages that would be merged
