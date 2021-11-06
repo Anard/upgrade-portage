@@ -36,6 +36,9 @@ set_param () {
 	 'portage')
 	 	[ $2 -eq 0 ] && unset UPDATE_PORTAGE || UPDATE_PORTAGE=1
 	 	;;
+	 'clean')
+	 	[ -2 -eq 0 ] && unset DEPCLEAN || DEPCLEAN=1
+	 	;;
 
 	 *)
 		echo -e "${red}An error occurred while setting parameters${normal}"
@@ -98,7 +101,7 @@ prepare_for_exit () {
 }
 
 # Function to get human readable time from machine time
-## USAGE: get_human_time --increment array machine_time
+## USAGE: get_human_time [--increment] array machine_time
 ## array must have been declared via -A option and have name different than 'array'
 get_human_time () {
 	if [ $# -eq 0 ]; then
@@ -179,27 +182,129 @@ get_av_merge () {
 }
 
 # Emerge via zenity
-## USAGE zenity_emerge [OPTION] [PACKAGE|SET]
+## USAGE zenity_emerge [ACTION] [PACKAGE|SET] [OPTIONS]
 zenity_emerge() {
 	[ $# -lt 1 ] && return 255
 	case $1 in
 	 -s|--sync)
 	 	ACTION='sync'
+	 	options="--pulsate"
+	 	title="Syncing repositories"
+	 	slp=.5
+	 	exFuncs=( rsync emerge )
+	 	exText="An error occurred while syncing, please check logs"
+	 	exCode=2
+	 	;;
+	 -C|--check-depclean)
+	 	ACTION='check-depclean'
+	 	title="Preparing for cleaning"
+	 	options="--pulsate"
+	 	slp=.5
+	 	exFunc=( emerge )
+	 	exText="An error occurred while checking for obsolete packages, please check logs"
+	 	exCode=5
 	 	;;
 	 -c|--depclean)
 	 	ACTION='depclean'
+	 	title="Cleaning your system"
+	 	slp=.5
+	 	shift
+	 	options=""; excluded=""
+	 	while [ $# -gt 1 ]; do
+	 		case $1 in
+	 	 	 --exclude)
+	 	 	 	excluded="$2"
+	 	 		;;
+	 	 	 *)
+	 	 	 	echo "Parametor error for function zenity_emerge"
+	 	 	 	exit 255
+	 	 	 	;;
+	 	 	esac
+	 	done
+	 	unset total
+	 	cleaning=0
+	 	percent=0
+	 	exFuncs=( emerge )
+	 	exText="An error occurred while cleaning systtem, please check logs"
+	 	exCode=6
 		;;
-	 -C|--check-depclean)
-	 	ACTION='check-depclean'
-	 	;;
 	 -k|--check)
 		[ $# -eq 2 ] || return 255
 	 	ACTION='check'
 	 	UP=$2
+		case $UP in
+		 @*)
+		 	title="Checking for upgrades"
+		 	;;
+		 *)
+		 	title="Checking for ${UP} upgrade"
+		 	;;
+		esac
+		options="--pulsate"
+		slp=.5
+	 	exFuncs=( emerge )
+	 	exText="An error occurred while checking dependencies, please check logs"
+	 	exCode=3
 	 	;;
 	 *)
 	 	ACTION='upgrade'
+	 	[ $1 = "--upgrade" ] && shift
 	 	UP=$1
+		case $UP in
+		 "@world")
+			title="Upgrading your system"
+			;;
+		 @*)
+			title="Upgrading ${UP}"
+			;;
+		 *)
+		 	pack=${UP#*/}
+		 	title="Upgrading ${pack^}"
+			;;
+		esac
+		slp=1
+	 	shift
+	 	options=""; excluded="" 	
+	 	while [ $# -gt 1]; do
+	 		case $1 in
+	 	 	 --choice)
+	 	 	 	declare -n packList=$2
+	 	 	 	;;
+	 	 	 --time)
+	 	 	 	declare -n mergeEst=$2
+	 	 	 	;;
+	 	 	 --exclude)
+	 	 	 	excluded="$2"
+	 	 		;;
+	 	 	 --average)
+	 	 	 	avMergeEst=$2
+	 	 	 	;;
+	 	 	 *)
+	 	 	 	echo "Parametor error for function zenity_emerge"
+	 	 	 	exit 255
+	 	 	 	;;
+	 		esac
+	 	
+	 		shift 2
+	 	done
+
+		# get portage log file size
+		portage_log="/var/log/portage/elog/summary.log"
+		[ -f "${portage_log}" ] && last_line=$( wc -l < "${portage_log}" ) || last_line=0
+		# total time
+		total=0
+		for i in ${!packList[@]}; do
+			[ ${time[$i]} -eq 0 ] && add=$avg || add=${time[$i]}
+			total=$(( $total+$add ))
+		done
+		# elapsed for calculating percentage & elapsed_h to print current package's merge time
+		emerging=0; installing=0
+		percent=0; elapsed=0;
+		declare -A elapsed_h=( ['machine']=0 ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
+		unset choice time time_h elapsed_h total
+	 	exFuncs=( emerge )
+	 	exText="An error occurred while upgrading system, please check logs"
+	 	exCode=4
 		;;
 	esac
 
@@ -216,8 +321,20 @@ zenity_emerge() {
 				eix-update
 			fi
 			;;
+		 'check-depclean')
+		 	emerge -pqc 2>&1 > "${tmpFile["logs"]}"
+		 	echo $? > "${tmpFile["result"]}"
+		 	;;
+		 'depclean')
+		 	emerge -qc ${excluded} 2>&1 > "${tmpFile["logs"]}"
+		  	echo $? > "${tmpFile["result"]}"
+		 	;;
 		 'check')
 		 	emerge -pquDN ${UP} 2>&1 > "${tmpFile["logs"]}"
+		 	echo $? > "${tmpFile["result"]}"
+		 	;;
+		 'upgrade')
+		 	emerge -quDN ${excluded} ${UP} 2>&1 > "${tmpFile["logs"]}"
 		 	echo $? > "${tmpFile["result"]}"
 		 	;;
 		esac
@@ -225,27 +342,6 @@ zenity_emerge() {
 	) &
 	sleep .5
 	dots=""
-		case $ACTION in
-		 'sync')
-		 	options="--pulsate"
-		 	title="Syncing repositories"
-		 	text=""
-		 	slp=.5
-		 	;;
-		 'check')
-			case $UP in
-			 @*)
-			 	title="Checking for upgrades"
-			 	;;
-			 *)
-			 	title="Checking for ${UP} upgrade"
-			 	;;
-			esac
-			options="--pulsate"
-			text=""
-			slp=.5
-			;;
-	esac
 	
 	while [ -f "${tmpFile["zenity"]}" ]; do
 		sleep $slp
@@ -254,31 +350,115 @@ zenity_emerge() {
 		 'sync')
 		 	print_line
 		 	;;
+		 'check-depclean')
+		 	echo "# Checking for obsolete packages ${dots}"
+		 	[ "$dots" = "..." ] && dots="" || dots="${dots}."
+		 	;;
+		 	
+		 'depclean')
+		 	print_line -r "Unmerging in: 5 4 3 2 1>>> "
+			new=`get_line "Unmerging (" | sed 's/Unmerging in: 5 4 3 2 1>>> //' | awk -F[\(\)\ ] '{ print $4 }'`
+			[ "$new" = "" ] || cleaning=$new
+
+			if [ -z $total ]; then
+				[ "$new" = "" ] || total=`get_line "Unmerging (" | sed 's/Unmerging in: 5 4 3 2 1>>> //' | awk -F[\(\)\ ] '{ print $6 }'`
+			fi
+			[ -z $total ] || percent=$(( 100*($cleaning-1)/$total ))
+			echo "$percent"
+		 	;;
 		 'check')
 		 	echo "# Calculating dependencies ${dots}"
 		 	[ "$dots" = "..." ] && dots="" || dots="${dots}."
 		 	;;
+		 'upgrade')
+			unset edited
+
+			new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
+			[ ! -z $new ] && [ $new -gt $emerging ] && emerging=$new && edited=1
+
+			new=$( get_line Installing | awk -F[\(\)\ ] '{ print $4 }' )
+			[ ! -z $new ] && [ $new -gt $installing ] && installing=$new && edited=1
+
+			if [ $edited ]; then
+				cur_package=$( get_line | awk -F' ' '{ print $6 }' )
+				cur_package=${cur_package%-[0-9]*}
+				
+				[ -z $current ] || last=$current
+				for current in ${!packList[@]}; do
+					if [ "${packList[$current]}" = "${cur_package}" ]; then
+						if [ $installing -eq $emerging ]; then
+							[ ${mergeEst[$current]} -eq 0 ] && add=$(( 8*${avMergeEst}/10 )) || add=0
+						elif [ $installing -gt 0 ]; then
+							[ ${mergeEst[$last]} -eq 0 ] && add=$(( 2*${avMergeEst}/10 )) || add=${mergeEst[$last]}
+							for i in ${!elapsed_h[@]}; do
+								elapsed_h[$i]=0
+							done
+						else add=0
+						fi
+						elapsed=$(( $elapsed + $add ))
+						break
+					fi
+				done
+			fi
+		
+			if [ $emerging -gt 0 ]; then
+				# real elapsed time
+				elapsed_h["machine"]=$(( ${elapsed_h["machine"]}+1 ))
+				
+				# recalculate percentage
+				if [ ${mergeEst[$current]} -eq 0 ]; then
+					percent=$(( 100*${elapsed}/${total} ))
+				elif [ ${elapsed_h["machine"]} -lt ${mergeEst[$current]} ]; then
+					percent=$(( 100* (${elapsed}+${elapsed_h["machine"]}) / ${total} ))
+				fi
+				
+				# human readable elapsed time
+				get_human_time --increment elapsed_h ${elapsed_h["machine"]}
+
+				# print line
+				print_line -n
+				print=$( print_human_time elapsed_h )
+				if [ ${mergeEst[$current]} -gt 0 ]; then
+					echo " - ${print} / ${time_h[$current]} (estimated)"
+				else echo " - ${print}"
+				fi
+			else
+				echo "# Calculating upgrade ${dots}"
+				[ "$dots" = "..." ] && dots="" || dots="${dots}."
+			fi
+			
+			# finally print percentage
+			echo "$percent"
+		 	;;
 		esac
 		
-	done | zenity --width 500 --window-icon "${iconPath}" --progress --title "${title}" --text "${text}" --auto-close ${options}
+	done | zenity --width 500 --window-icon "${iconPath}" --progress --title "${title}" --text "" --auto-close ${options}
 
-	case $ACTION in
-	 'sync')
-	 	funcs=( rsync emerge )
-	 	text="An error occurred while syncing, please check logs"
-	 	exCode=2
-	 	;;
-	 'check')
-	 	funcs=( emerge )
-	 	text="An error occurred while checking dependencies, please check logs"
-	 	exCode=3
-	 	;;
-	esac
-
-	# aborted
+	# Aborted
 	if [ $? -gt 0 ]; then
 		prepare_for_exit ${funcs[@]}
+		return 1
 	fi
+
+	if [ $ACTION = '--upgrade' ]; then
+		# Print messages from emerging
+		if [ -f "${portage_log}" ]; then
+			# $message is a table of a new messages lines
+			message=( $( grep -Fn '>>>' "${portage_log}" | awk -F: '{print $1}' ) )
+			for i in ${!message[@]}; do
+				[ $last_line -ge ${message[$i]} ] && continue
+				#get package name
+				package[$i]=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" )
+				start=$(( ${message[$i]}+2 ))
+				[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
+
+				#print message
+				sed -n "${start},${end}p" "${portage_log}" \
+				| zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --title "Messages from ${package[$i]}"
+			done
+		fi
+	fi
+			
 	cat "${tmpFile["logs"]}"
 	#error
 	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "${text}" && prepare_for_exit && return ${exCode}
@@ -292,253 +472,176 @@ zenity_emerge() {
 ## USAGE: zenity_upgrade OPTION|PACKAGE|SET
 zenity_upgrade () {
 	[ $# -eq 1 ] || return 255
-	UP=$1
-
-	# First check
-	zenity_emerge --check ${UP}
-
-	# nothing to merge
-	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
+	case $1 in
+	 '--depclean')
+		# DEPCLEAN
 		
-	messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
-	sed -i '/^\[/!d' "${tmpFile["logs"]}"
-	# list of all packages that would be merged
-	list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
-	# prepare output and ask for final choice
-	for i in ${!list[@]}; do
-		package[$i]=${list[$i]%-[0-9]*}
-		version[$i]=${list[$i]#${package[$i]}-}
-		action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
-		grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
-		current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
-		time_h[$i]=""
-	done
-	
+		# First check
+		zenity_emerge --check-depclean
+		ret=$?
+		[ $ret -gt 0 ] && return $(( $ret+10 ))
+	 	
+	 	# nothing to clean
+		[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 0
+		
+		remove=$( sed -n '$p' "${tmpFile["logs"]}" | awk -F' ' '{print $4}' )
+		# remove unwanted lines from output
+		sed -i '/\//!d' "${tmpFile["logs"]}"
+		sed -i '/=/d' "${tmpFile["logs"]}"
+		sed -i '/*/d' "${tmpFile["logs"]}"
 
-	# Build time estimation
-	avg=0   #average estimations
-	nb=0    #number of packages found
-	if [ $ESTIMATE ]; then
-		# estimate each time
-		echo -e "${green}Estimating merge time...${normal}"
-		for i in ${!list[@]}; do
-			time[$i]=$( get_av_merge "${package[$i]}" )
-			if [ -z ${time[$i]} ]; then
-				echo "Unknown merge time for ${package[$i]}"
-				time[$i]=0
-				time_h[$i]='???'
-			else
-				avg=$(( $avg+${time[$i]} ))
-				nb=$(( $nb+1 ))
-
-				declare -A time_hum
-				get_human_time time_hum ${time[$i]}
-				time_h[$i]=$( print_human_time time_hum )
-				unset time_hum
-				
-				echo "Average merge time for ${package[$i]} is ${time_h[$i]}"
-			fi
+		package=( $( cut -d: -f1 "${tmpFile["logs"]}" ) )
+		for i in ${!package[@]}; do
+			versions[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["logs"]}" | cut -d: -f2 )
+			read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
 		done
-	fi
-
-	# final average time
-	if [ $nb -gt 0 ]; then
-		avg=$(( $avg/$nb ))
-	else avg=10
-	fi
-	
-	case $UP in
-	 @*)
-		title="${#list[@]} packages should be merged"
-		text="Uncheck packages you want to exclude\n"
-		check="TRUE\n"
-		options="--checklist --column 'merge'"
-		[ $ESTIMATE ] || options="--hide-column 6 ${options}"
-		;;
-	 *)
-	 	pack=${UP#*/}
-		title="${pack^} needs update"
-		text="${#list[@]} packages would be merged\n"
-		check=""
-		options=""
-		[ $ESTIMATE ] || options="--hide-column 5"
-		;;
-	esac
-	
-	text+="${messages}"
-	
-	choice=( $(
-		for i in ${!list[@]}; do
-			echo -e "${check}${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
-		done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list ${options} --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' --separator ' ' --title "${title}" --text "${text}" )
-	)
-	
-	if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
-		echo "Aborted"
-		prepare_for_exit
-		case $UP in
-		 @*)
-			return 11
-			;;
-		 *)
+		
+		choice=( $(
+			for i in ${!package[@]}; do
+				echo -e "TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
+			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${remove} packages should be unmerged" --text "Uncheck package you want to preserve" )
+		)
+		if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
+			echo "Aborted"
+			prepare_for_exit
 			return 1
-			;;
-		esac
-	fi
+		fi
 
-	# get excluded packages list
-	exclude=""
-	if [ -z $check ]; then
-		choice=( ${list[@]} )
-	else
+		# get excluded packages list
+		exclude=""
 		if [[ "${package[@]}" != "${choice[@]}" ]]; then
 			j=0
-			for i in ${!list[@]}; do
+			for i in ${!package[@]}; do
 				if [ "${choice[$j]}" = "${package[$i]}" ]; then
 					j=$(( $j+1 ))
 				else
 					exclude+=" --exclude ${package[$i]}"
-					time=( ${time[@]:0:$i} ${time[@]:$i+1} )
 				fi
 			done
 		fi
-		unset list package version action current
-	fi
-
-	# total time
-	total=0
-	for i in ${!choice[@]}; do
-		[ "${time_h[$i]}" = "???" ] && add=$avg || add=${time[$i]}
-		total=$(( $total+$add ))
-	done
-
-	# finally emerge
-	case $UP in
-	 "@world")
-		text="Upgrading your system"
-		;;
-	 @*)
-		text="Upgrading ${UP}"
+		unset remove package selected protected omitted choice
+	 	
+		# finally clean
+		zenity_emerge --depclean --exclude ${exclude}
+		ret=$?
+		[ $ret -gt 0 ] && ret=$(( $ret+10 ))
+		if [ ! -s "${tmpFile["logs"]}" ] && [ -z "$exclude" ]; then
+			ret=1
+		fi
 		;;
 	 *)
-		text="Upgrading ${pack^}"
-		;;
-	esac
-	echo -e "${green}${text}...${normal}"
-	# get portage log file size
-	portage_log="/var/log/portage/elog/summary.log"
-	[ -f "${portage_log}" ] && last_line=$( wc -l < "${portage_log}" ) || last_line=0
+		# UPGRADE
+	 	UP=$1
 
-	(
-		touch "${tmpFile["zenity"]}"
-		emerge -quDN ${exclude} ${UP} 2>&1 > "${tmpFile["logs"]}"
-		echo $? > "${tmpFile["result"]}"
-		rm "${tmpFile["zenity"]}"
-	) &
-	sleep 1
-	# elapsed for calculating percentage & elapsed_h to print current package's merge time
-	emerging=0; installing=0
-	percent=0; elapsed=0;
-	declare -A elapsed_h=( ['machine']=0 ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
-	dots=""
-	
-	while [ -f "${tmpFile["zenity"]}" ]
-	do
-		sleep 1
-		unset edited
+		# First check
+		zenity_emerge --check ${UP}
+		ret=$?
+		[ $ret -gt 0 ] && return $(( $ret+10 ))
 
-		new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
-		[ ! -z $new ] && [ $new -gt $emerging ] && emerging=$new && edited=1
-
-		new=$( get_line Installing | awk -F[\(\)\ ] '{ print $4 }' )
-		[ ! -z $new ] && [ $new -gt $installing ] && installing=$new && edited=1
-
-		if [ $edited ]; then
-			cur_package=$( get_line | awk -F' ' '{ print $6 }' )
-			cur_package=${cur_package%-[0-9]*}
+		# nothing to merge
+		[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
 			
-			[ -z $current ] || last=$current
-			for current in ${!choice[@]}; do
-				if [ "${choice[$current]}" = "${cur_package}" ]; then
-					if [ $installing -eq $emerging ]; then
-						[ ${time[$current]} -eq 0 ] && add=$(( 8*${avg}/10 )) || add=0
-					elif [ $installing -gt 0 ]; then
-						[ ${time[$last]} -eq 0 ] && add=$(( 2*${avg}/10 )) || add=${time[$last]}
-						for i in ${!elapsed_h[@]}; do
-							elapsed_h[$i]=0
-						done
-					else add=0
-					fi
-					elapsed=$(( $elapsed + $add ))
-					break
+		messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
+		sed -i '/^\[/!d' "${tmpFile["logs"]}"
+		# list of all packages that would be merged
+		list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
+		# prepare output and ask for final choice
+		for i in ${!list[@]}; do
+			package[$i]=${list[$i]%-[0-9]*}
+			version[$i]=${list[$i]#${package[$i]}-}
+			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
+			grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
+			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
+			time_h[$i]=""
+		done
+		
+
+		# Build time estimation
+		avg=0   #average estimations
+		nb=0    #number of packages found
+		if [ $ESTIMATE ]; then
+			# estimate each time
+			echo -e "${green}Estimating merge time...${normal}"
+			for i in ${!list[@]}; do
+				time[$i]=$( get_av_merge "${package[$i]}" )
+				if [ -z ${time[$i]} ]; then
+					echo "Unknown merge time for ${package[$i]}"
+					time[$i]=0
+					time_h[$i]='???'
+				else
+					avg=$(( $avg+${time[$i]} ))
+					nb=$(( $nb+1 ))
+
+					declare -A time_hum
+					get_human_time time_hum ${time[$i]}
+					time_h[$i]=$( print_human_time time_hum )
+					unset time_hum
+					
+					echo "Average merge time for ${package[$i]} is ${time_h[$i]}"
 				fi
 			done
 		fi
-		
-		if [ $emerging -gt 0 ]; then
-			# real elapsed time
-			elapsed_h["machine"]=$(( ${elapsed_h["machine"]}+1 ))
-			
-			# recalculate percentage
-			if [ ${time[$current]} -eq 0 ]; then
-				percent=$(( 100*${elapsed}/${total} ))
-			elif [ ${elapsed_h["machine"]} -lt ${time[$current]} ]; then
-				percent=$(( 100* (${elapsed}+${elapsed_h["machine"]}) / ${total} ))
-			fi
-			
-			# human readable elapsed time
-			get_human_time --increment elapsed_h ${elapsed_h["machine"]}
 
-			# print line
-			print_line -n
-			print=$( print_human_time elapsed_h )
-			if [ ${time[$current]} -gt 0 ]; then
-				echo " - ${print} / ${time_h[$current]} (estimated)"
-			else echo " - ${print}"
-			fi
-		else
-			echo "# Calculating upgrade ${dots}"
-			[ "$dots" = "..." ] && dots="" || dots="${dots}."
+		# final average time
+		if [ $nb -gt 0 ]; then
+			avg=$(( $avg/$nb ))
+		else avg=10
 		fi
 		
-		# finally print percentage
-		echo "$percent"
-	done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text ""
+		title="Here are packages that should be merged"
+		text="Uncheck packages you want to exclude\n"
+		text+=${messages}
+		
+		choice=( $(
+			for i in ${!list[@]}; do
+				echo -e "${check}${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
+			done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list ${options} --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' --separator ' ' --title "${title}" --text "${text}" )
+		)
+		
+		if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
+			echo "Aborted"
+			prepare_for_exit
+			case $UP in
+			 @*)
+				return 11
+				;;
+			 *)
+				return 1
+				;;
+			esac
+		fi
 
-	[ $? -gt 0 ] && prepare_for_exit emerge && return 11
+		# get excluded packages list
+		exclude=""
+		if [ -z $check ]; then
+			choice=( ${list[@]} )
+		else
+			if [[ "${package[@]}" != "${choice[@]}" ]]; then
+				j=0
+				for i in ${!list[@]}; do
+					if [ "${choice[$j]}" = "${package[$i]}" ]; then
+						j=$(( $j+1 ))
+					else
+						exclude+=" --exclude ${package[$i]}"
+						time=( ${time[@]:0:$i} ${time[@]:$i+1} )
+					fi
+				done
+			fi
+			unset list package version action current
+		fi
 
-	unset choice time time_h elapsed_h total
+		zenity_emerge ${UP} --choice ${choice} --time ${time} --exclude "${exclude}" --average $avg
 
-	# Print messages from emerging
-	if [ -f "${portage_log}" ]; then
-		# $message is a table of a new messages lines
-		message=( $( grep -Fn '>>>' "${portage_log}" | awk -F: '{print $1}' ) )
-		for i in ${!message[@]}; do
-			[ $last_line -ge ${message[$i]} ] && continue
-			#get package name
-			package[$i]=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" )
-			start=$(( ${message[$i]}+2 ))
-			[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
-
-			#print message
-			sed -n "${start},${end}p" "${portage_log}" \
-			| zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --title "Messages from ${package[$i]}"
-		done
-	fi
-	cat "${tmpFile["logs"]}"
-	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while upgrading system, please check logs" && prepare_for_exit && return 14
-
-	ret=0
-	if grep "!!! existing preserved libs found" "${tmpFile["logs"]}" &> /dev/null; then
-		ret=3
-	fi
-
+		[ $? -gt 0 ] && ret=$(( $?+10 )) || ret=0
+		if grep "!!! existing preserved libs found" "${tmpFile["logs"]}" &> /dev/null; then
+			ret=3
+		elif [ ! -z "${exclude}" ] || [ ! "${UP}" = "@world" ]; then
+			ret=2
+		fi
+		;;
+	esac
+	
 	prepare_for_exit
-
-	if [ ! -z "${exclude}" ] || [ ! "${UP}" = "@world" ]; then
-		ret=2
-	fi
-
 	return $ret
 }
 
@@ -776,99 +879,18 @@ fi
 if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 
 	if [ $GTK ]; then
-		text="Preparing for cleaning"
-		echo -e "${green}${text}...${normal}"
-			
-		# first check
-		(
-			touch "${tmpFile["zenity"]}"
-			emerge -pqc 2>&1 > "${tmpFile["logs"]}"
-			rm "${tmpFile["zenity"]}"
-		) &
-		sleep .5
-		dots=""
-		while [ -f "${tmpFile["zenity"]}" ]
-		do
-			sleep .5
-			echo "# Checking for obsolete packages ${dots}"
-			[ "$dots" = "..." ] && dots="" || dots="${dots}."
-		done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --pulsate --auto-close --text ""
-
-		[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-		cat "${tmpFile["logs"]}"
-
-		if [ -s "${tmpFile["logs"]}" ]; then
-			remove=$( sed -n '$p' "${tmpFile["logs"]}" | awk -F' ' '{print $4}' )
-			# remove unwanted lines from output
-			sed -i '/\//!d' "${tmpFile["logs"]}"
-			sed -i '/=/d' "${tmpFile["logs"]}"
-			sed -i '/*/d' "${tmpFile["logs"]}"
-
-			package=( $( cut -d: -f1 "${tmpFile["logs"]}" ) )
-			for i in ${!package[@]}; do
-				versions[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["logs"]}" | cut -d: -f2 )
-				read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
-			done
-			
-			choice=( $(
-				for i in ${!package[@]}; do
-					echo -e "TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
-				done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${remove} packages should be unmerged" --text "Uncheck package you want to preserve" )
-			)
-			if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
-				echo "Aborted"
-				prepare_for_exit
-				exit 1
-			fi
-
-			# get excluded packages list
-			exclude=""
-			if [[ "${package[@]}" != "${choice[@]}" ]]; then
-				j=0
-				for i in ${!package[@]}; do
-					if [ "${choice[$j]}" = "${package[$i]}" ]; then
-						j=$(( $j+1 ))
-					else
-						exclude+=" --exclude ${package[$i]}"
-					fi
-				done
-			fi
-			unset remove package selected protected omitted choice
-
-			# finally clean
-			text="Cleaning your system"
-			echo -e "${green}${text}...${normal}"
-			(
-				touch "${tmpFile["zenity"]}"
-				emerge -qc $exclude 2>&1 > "${tmpFile["logs"]}"
-				echo $? > "${tmpFile["result"]}"
-				rm "${tmpFile["zenity"]}"
-			) &
-			sleep .5
-			cleaning=0
-			percent=0
-			while [ -f "${tmpFile["zenity"]}" ]
-			do
-				sleep .5
-				print_line -r "Unmerging in: 5 4 3 2 1>>> "
-				new=`get_line "Unmerging (" | sed 's/Unmerging in: 5 4 3 2 1>>> //' | awk -F[\(\)\ ] '{ print $4 }'`
-				[ "$new" = "" ] || cleaning=$new
-
-				if [ -z $total ]; then
-					[ "$new" = "" ] || total=`get_line "Unmerging (" | sed 's/Unmerging in: 5 4 3 2 1>>> //' | awk -F[\(\)\ ] '{ print $6 }'`
-				fi
-				[ -z $total ] || percent=$(( 100*($cleaning-1)/$total ))
-				echo "$percent"
-			done | zenity --width=500 --window-icon "${iconPath}" --progress --title "${text}" --auto-close --text ""
-
-			[ $? -gt 0 ] && prepare_for_exit emerge && exit 1
-			[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "An error occurred while cleaning system, please check logs" && prepare_for_exit && exit 5
-			if [ ! -s "${tmpFile["logs"]}" ] && [ -z "$exclude" ]; then
-				set_param 'upgrade' 0
-			else
-				set_param 'upgrade' 1 && cat "${tmpFile["logs"]}"
-			fi
-		fi
+		zenity_upgrade --depclean
+		case $? in
+		 0) # all done
+		 	set_param 'u' 1
+		 	;;
+		 1) # nothing to clean
+		 	set_param 'u' 0
+		 	;;
+		 *) # exit with error
+		 	exit $(( $?-10 ))
+		 	;;
+		esac
 
 	# Standard cleaning
 	else
