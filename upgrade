@@ -882,10 +882,10 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 		zenity_upgrade --depclean
 		case $? in
 		 0) # all done
-		 	set_param 'u' 1
+		 	set_param 'upgrade' 1
 		 	;;
 		 1) # nothing to clean
-		 	set_param 'u' 0
+		 	set_param 'upgrade' 0
 		 	;;
 		 *) # exit with error
 		 	exit $(( $?-10 ))
