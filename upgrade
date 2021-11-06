@@ -265,7 +265,7 @@ zenity_emerge() {
 		slp=1
 	 	shift
 	 	options=""; excluded="" 	
-	 	while [ $# -gt 1]; do
+	 	while [ $# -gt 1 ]; do
 	 		case $1 in
 	 	 	 --choice)
 	 	 	 	declare -n packList=$2
@@ -330,12 +330,30 @@ zenity_emerge() {
 		  	echo $? > "${tmpFile["result"]}"
 		 	;;
 		 'check')
-		 	emerge -pquDN ${UP} 2>&1 > "${tmpFile["logs"]}"
-		 	echo $? > "${tmpFile["result"]}"
+		 	case ${UP} in
+		 	 @*)
+		 		emerge -pquDN ${UP} 2>&1 > "${tmpFile["logs"]}"
+		 		res=$?
+		 		;;
+		 	 *)
+		 	 	emerge -pqu1 ${UP} 2>&1 > "${tmpFile["logs"]}"
+		 	 	res=$?
+		 	 	;;
+		 	esac
+		 	echo $res > "${tmpFile["result"]}"
 		 	;;
 		 'upgrade')
-		 	emerge -quDN ${excluded} ${UP} 2>&1 > "${tmpFile["logs"]}"
-		 	echo $? > "${tmpFile["result"]}"
+		 	case ${UP} in
+		 	 @*)
+		 		emerge -quDN ${excluded} ${UP} 2>&1 > "${tmpFile["logs"]}"
+		 		res=$?
+		 		;;
+		 	 *)
+		 	 	emerge -qu1 ${UP} 2>&1 > "{tmpFile["logs"]}"
+		 	 	res=$?
+		 	 	;;
+		 	esac
+		 	echo $res > "${tmpFile["result"]}"
 		 	;;
 		esac
 		rm "${tmpFile["zenity"]}"
@@ -440,7 +458,7 @@ zenity_emerge() {
 		return 1
 	fi
 
-	if [ $ACTION = '--upgrade' ]; then
+	if [ $ACTION = 'upgrade' ]; then
 		# Print messages from emerging
 		if [ -f "${portage_log}" ]; then
 			# $message is a table of a new messages lines
@@ -458,10 +476,10 @@ zenity_emerge() {
 			done
 		fi
 	fi
-			
+
 	cat "${tmpFile["logs"]}"
 	#error
-	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "${text}" && prepare_for_exit && return ${exCode}
+	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "${exText}" && prepare_for_exit && return ${exCode}
 	
 	rm "${tmpFile["result"]}"
 
@@ -502,7 +520,7 @@ zenity_upgrade () {
 			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${remove} packages should be unmerged" --text "Uncheck package you want to preserve" )
 		)
 		if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
-			echo "Aborted"
+			echo -e "${orange}Aborted${normal}"
 			prepare_for_exit
 			return 1
 		fi
@@ -522,7 +540,7 @@ zenity_upgrade () {
 		unset remove package selected protected omitted choice
 	 	
 		# finally clean
-		zenity_emerge --depclean --exclude ${exclude}
+		zenity_emerge --depclean --exclude "${exclude}"
 		ret=$?
 		[ $ret -gt 0 ] && ret=$(( $ret+10 ))
 		if [ ! -s "${tmpFile["logs"]}" ] && [ -z "$exclude" ]; then
@@ -554,7 +572,6 @@ zenity_upgrade () {
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 			time_h[$i]=""
 		done
-		
 
 		# Build time estimation
 		avg=0   #average estimations
@@ -589,8 +606,20 @@ zenity_upgrade () {
 		fi
 		
 		title="Here are packages that should be merged"
-		text="Uncheck packages you want to exclude\n"
-		text+=${messages}
+		case ${UP} in
+		 @*)
+		 	check="TRUE\n"
+			options="--checklist --column merge"
+			[ $ESTIMATE ] || options="--hide-column 6 ${options}"
+			text="Uncheck packages you want to exclude\n"
+			;;
+		 *)
+		 	check=""
+			options=""
+			[ $ESTIMATE ] || options="--hide-column 5"		 	
+			text=""
+		esac
+		text+="${messages}"
 		
 		choice=( $(
 			for i in ${!list[@]}; do
@@ -599,7 +628,7 @@ zenity_upgrade () {
 		)
 		
 		if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
-			echo "Aborted"
+			echo -e "${orange}Aborted${normal}"
 			prepare_for_exit
 			case $UP in
 			 @*)
@@ -630,7 +659,7 @@ zenity_upgrade () {
 			unset list package version action current
 		fi
 
-		zenity_emerge ${UP} --choice ${choice} --time ${time} --exclude "${exclude}" --average $avg
+		zenity_emerge ${UP} --choice choice --time time --exclude "${exclude}" --average $avg
 
 		[ $? -gt 0 ] && ret=$(( $?+10 )) || ret=0
 		if grep "!!! existing preserved libs found" "${tmpFile["logs"]}" &> /dev/null; then
@@ -793,9 +822,9 @@ fi
 
 # Sync
 if [ $SYNC ]; then
-	title="Syncing repositories"
-	echo -e "${green}${title}...${normal}"
 	if [ ! $GTK ]; then
+		title="Syncing repositories"
+		echo -e "${green}${title}...${normal}"
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
 	else
@@ -808,6 +837,7 @@ if [ $SYNC ]; then
 		else set_param 'portage' 0
 		fi
 	fi
+else set_param 'portage' 1
 fi
 
 # Upgrade
