@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 version="1.03-r4"; script_name=`basename "$0"`
 # Script to sync && upgrade Gentoo portage
 configPath="/usr/lib"
@@ -252,6 +252,7 @@ zenity_emerge() {
 	 	exText="An error occurred while checking dependencies, please check logs"
 	 	exCode=3
 	 	;;
+	 	
 	 *)
 	 	ACTION='upgrade'
 	 	[ $1 = "--upgrade" ] && shift
@@ -351,7 +352,7 @@ zenity_emerge() {
 		 		res=$?
 		 		;;
 		 	 *)
-		 	 	emerge -qu1 ${UP} 2>&1 > "{tmpFile["logs"]}"
+		 	 	emerge -qu1 ${UP} 2>&1 > "${tmpFile["logs"]}"
 		 	 	res=$?
 		 	 	;;
 		 	esac
@@ -654,7 +655,7 @@ zenity_upgrade () {
 		ret=$?
 		[ ${UP:0:1} = '@' ] || choice=( ${package[@]} )
 		
-		if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
+		if [ "$ret" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
 			echo -e "${orange}Aborted${normal}"
 			prepare_for_exit
 			case $UP in
@@ -669,22 +670,18 @@ zenity_upgrade () {
 
 		# get excluded packages list
 		exclude=""
-		if [ -z $check ]; then
-			choice=( ${list[@]} )
-		else
-			if [[ "${package[@]}" != "${choice[@]}" ]]; then
-				j=0
-				for i in ${!list[@]}; do
-					if [ "${choice[$j]}" = "${package[$i]}" ]; then
-						j=$(( $j+1 ))
-					else
-						exclude+=" --exclude ${package[$i]}"
-						time=( ${time[@]:0:$i} ${time[@]:$i+1} )
-					fi
-				done
-			fi
-			unset list package version action current
+		if [[ "${package[@]}" != "${choice[@]}" ]]; then
+			j=0
+			for i in ${!list[@]}; do
+				if [ "${choice[$j]}" = "${package[$i]}" ]; then
+					j=$(( $j+1 ))
+				else
+					exclude+=" --exclude ${package[$i]}"
+					time=( ${time[@]:0:$i} ${time[@]:$i+1} )
+				fi
+			done
 		fi
+		unset list package version action current
 
 		zenity_emerge ${UP} --choice choice --time time --exclude "${exclude}" --average $avg
 
