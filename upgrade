@@ -90,7 +90,7 @@ prepare_for_exit () {
 
 	# kill launched function
 	for func in "${functions[@]}"; do
-		echo "Canceled ${func}"
+		echo -e "${orange}Canceled ${func}${normal}"
 		pkill "${func}"
 		while pgrep "${func}" &> /dev/null; do
 			sleep .5
@@ -519,10 +519,13 @@ zenity_upgrade () {
 			read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
 		done
 		
+		[ $remove -gt 1 ] && plur="s" || plur =""
+		title="${remove} package${plur} should be unmerged"
+		
 		choice=( $(
 			for i in ${!package[@]}; do
 				echo -e "TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
-			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${remove} packages should be unmerged" --text "Uncheck package you want to preserve" )
+			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${title}" --text "Uncheck package you want to preserve" )
 		)
 		if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
 			echo -e "${orange}Aborted${normal}"
@@ -623,7 +626,8 @@ zenity_upgrade () {
 		else avg=10
 		fi
 		
-		title="Here are packages that should be merged"
+		[ ${#list[@]} -gt 1 ] && plur="s" || plur=""
+		title="${#list[@]} package${plur} should be merged"
 		case ${UP} in
 		 @*)
 		 	check="TRUE\n"
