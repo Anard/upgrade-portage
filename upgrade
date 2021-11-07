@@ -394,7 +394,7 @@ zenity_emerge() {
 		 'upgrade')
 			unset edited
 
-			if [ -f "$(tmpFile["logs"]}" ]; then
+			if [ -f "${tmpFile["logs"]}" ]; then
 				new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
 				[ ! -z $new ] && [ $new -gt $emerging ] && emerging=$new && edited=1
 
