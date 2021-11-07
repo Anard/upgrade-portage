@@ -650,7 +650,7 @@ zenity_upgrade () {
 		)
 		
 		ret=$?
-		[ ${UP:0:1} = '@' ] || choice=( ${list[@]} )
+		[ ${UP:0:1} = '@' ] || choice=( ${package[@]} )
 		
 		if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
 			echo -e "${orange}Aborted${normal}"
