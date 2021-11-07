@@ -864,6 +864,7 @@ else
 	if type eix &> /dev/null; then
 		eix -qu sys-apps/portage && set_param 'portage' 1 || set_param 'portage' 0
 	else set_param 'portage' 1
+	fi
 fi
 
 # Upgrade
