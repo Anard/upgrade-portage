@@ -294,14 +294,13 @@ zenity_emerge() {
 		# total time
 		total=0
 		for i in ${!packList[@]}; do
-			[ ${time[$i]} -eq 0 ] && add=$avg || add=${time[$i]}
+			[ ${mergeEst[$i]} -eq 0 ] && add=$avg || add=${mergeEst[$i]}
 			total=$(( $total+$add ))
 		done
 		# elapsed for calculating percentage & elapsed_h to print current package's merge time
 		emerging=0; installing=0
 		percent=0; elapsed=0;
 		declare -A elapsed_h=( ['machine']=0 ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
-		unset choice time time_h elapsed_h total
 	 	exFuncs=( emerge )
 	 	exText="An error occurred while upgrading system, please check logs"
 	 	exCode=4
