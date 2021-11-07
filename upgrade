@@ -90,11 +90,11 @@ prepare_for_exit () {
 
 	# kill launched function
 	for func in "${functions[@]}"; do
-		echo -e "${orange}Canceled ${func}${normal}"
 		pkill "${func}"
 		while pgrep "${func}" &> /dev/null; do
 			sleep .5
 		done
+		echo -e "${orange}Canceled ${func}${normal}"
 	done
 	# delete tmp files
 	for file in ${tmpFile[@]}; do
