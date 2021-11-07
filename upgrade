@@ -464,8 +464,19 @@ zenity_emerge() {
 		return 1
 	fi
 
+	# Print messages from emerging
+	# $message is a table of a new messages lines
+	message=( $( grep -Fn ' * IMPORTANT:' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) )
+	for i in ${!message[@]}; do
+		start=$(( ${message[$i]}+1 ))
+		[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
+
+		#print message
+		sed -n "${start},${end}p" "${tmpFile["logs"]}" \
+		| zenity --width 500 --height 300 --window-icon "${iconPath}" --warning --title "Configuration file needs update"
+	done
+
 	if [ $ACTION = 'upgrade' ]; then
-		# Print messages from emerging
 		if [ -f "${portage_log}" ]; then
 			# $message is a table of a new messages lines
 			message=( $( grep -Fn '>>>' "${portage_log}" | awk -F: '{print $1}' ) )
