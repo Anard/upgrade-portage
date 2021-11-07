@@ -15,8 +15,7 @@ Graphical interface via zenity
 
 - check handle of emerge @preserved-rebuild
 - check errors handling from emerge
-- check new portage messages with less blank line
-		-- use only tmpFile[logs] as source (portage log give ebuild related messages)
+- portage messages : use only tmpFile[logs] as source (portage_log gives ebuild related messages)
 - check unified zenity functions
 
 - get colored/bold output from emerge to zenity
