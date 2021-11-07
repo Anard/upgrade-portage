@@ -10,7 +10,7 @@ if [ ! -f "${iconPath}" ]; then
 	iconPath="`dirname \"$0\"`/upgrade-portage.png"
 fi
 worldFile="/var/lib/portage/world"
-declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['zenity']="/tmp/zenity-progress.log" ['result']="/tmp/portage-result" )
+declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['result']="/tmp/zenity-result" )
 
 ###### FUNCTIONS
 set_param () {
@@ -92,6 +92,9 @@ prepare_for_exit () {
 	for func in "${functions[@]}"; do
 		echo "Canceled ${func}"
 		pkill "${func}"
+		while pgrep "${func}" &> /dev/null; do
+			sleep .5
+		done
 	done
 	# delete tmp files
 	for file in ${tmpFile[@]}; do
@@ -185,6 +188,9 @@ get_av_merge () {
 ## USAGE zenity_emerge [ACTION] [PACKAGE|SET] [OPTIONS]
 zenity_emerge() {
 	[ $# -lt 1 ] && return 255
+	# clean tmp files
+	prepare_for_exit
+	
 	case $1 in
 	 -s|--sync)
 	 	ACTION='sync'
@@ -309,12 +315,10 @@ zenity_emerge() {
 
 	echo -e "${green}${title}...${normal}"
 	(
-		touch "${tmpFile["zenity"]}"
 		case $ACTION in
 		 'sync')
 			emerge --sync 2>&1 > "${tmpFile["logs"]}"
 			res=$?
-			echo $res > "${tmpFile["result"]}"
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
 				echo "Updating eix database"
 				eix-update
@@ -322,11 +326,11 @@ zenity_emerge() {
 			;;
 		 'check-depclean')
 		 	emerge -pqc 2>&1 > "${tmpFile["logs"]}"
-		 	echo $? > "${tmpFile["result"]}"
+		 	res=$?
 		 	;;
 		 'depclean')
 		 	emerge -qc ${excluded} 2>&1 > "${tmpFile["logs"]}"
-		  	echo $? > "${tmpFile["result"]}"
+		 	res=$?
 		 	;;
 		 'check')
 		 	case ${UP} in
@@ -339,7 +343,6 @@ zenity_emerge() {
 		 	 	res=$?
 		 	 	;;
 		 	esac
-		 	echo $res > "${tmpFile["result"]}"
 		 	;;
 		 'upgrade')
 		 	case ${UP} in
@@ -352,15 +355,14 @@ zenity_emerge() {
 		 	 	res=$?
 		 	 	;;
 		 	esac
-		 	echo $res > "${tmpFile["result"]}"
 		 	;;
 		esac
-		rm "${tmpFile["zenity"]}"
+		echo $res > "${tmpFile["result"]}"
 	) &
 	sleep .5
 	dots=""
 	
-	while [ -f "${tmpFile["zenity"]}" ]; do
+	while [ ! -f "${tmpFile["result"]}" ]; do
 		sleep $slp
 		
 		case $ACTION in
@@ -383,10 +385,12 @@ zenity_emerge() {
 			[ -z $total ] || percent=$(( 100*($cleaning-1)/$total ))
 			echo "$percent"
 		 	;;
+		 	
 		 'check')
 		 	echo "# Calculating dependencies ${dots}"
 		 	[ "$dots" = "..." ] && dots="" || dots="${dots}."
 		 	;;
+		 	
 		 'upgrade')
 			unset edited
 
@@ -453,7 +457,7 @@ zenity_emerge() {
 
 	# Aborted
 	if [ $? -gt 0 ]; then
-		prepare_for_exit ${funcs[@]}
+		prepare_for_exit ${exFuncs[@]}
 		return 1
 	fi
 
@@ -462,6 +466,7 @@ zenity_emerge() {
 		if [ -f "${portage_log}" ]; then
 			# $message is a table of a new messages lines
 			message=( $( grep -Fn '>>>' "${portage_log}" | awk -F: '{print $1}' ) )
+			unset package
 			for i in ${!message[@]}; do
 				[ $last_line -ge ${message[$i]} ] && continue
 				#get package name
@@ -508,6 +513,7 @@ zenity_upgrade () {
 		sed -i '/*/d' "${tmpFile["logs"]}"
 
 		package=( $( cut -d: -f1 "${tmpFile["logs"]}" ) )
+		unset versions selected protected omitted
 		for i in ${!package[@]}; do
 			versions[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["logs"]}" | cut -d: -f2 )
 			read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
@@ -546,6 +552,7 @@ zenity_upgrade () {
 			ret=1
 		fi
 		;;
+		
 	 *)
 		# UPGRADE
 	 	UP=$1
@@ -553,7 +560,18 @@ zenity_upgrade () {
 		# First check
 		zenity_emerge --check ${UP}
 		ret=$?
-		[ $ret -gt 0 ] && return $(( $ret+10 ))
+		if [ $ret -gt 1 ]; then
+			return $(( $ret+10 ))
+		elif [ $ret -gt 0 ]; then
+			case ${UP} in
+			 @*)
+			 	return 11
+			 	;;
+			 *)
+			 	return 1
+			 	;;
+			esac
+		fi
 
 		# nothing to merge
 		[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
@@ -563,6 +581,7 @@ zenity_upgrade () {
 		# list of all packages that would be merged
 		list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
 		# prepare output and ask for final choice
+		unset package version action current time time_h
 		for i in ${!list[@]}; do
 			package[$i]=${list[$i]%-[0-9]*}
 			version[$i]=${list[$i]#${package[$i]}-}
@@ -752,6 +771,7 @@ repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 last=0
 text="Checking repositories..."
 echo -e "${green}${text}${normal}"
+unset time
 for i in "${!repos[@]}"; do
 	if [ -f "${repos[$i]}/Manifest" ]; then
 		timestamp=$( cat "${repos[$i]}/metadata/timestamp" )
@@ -836,7 +856,6 @@ if [ $SYNC ]; then
 		else set_param 'portage' 0
 		fi
 	fi
-else set_param 'portage' 1
 fi
 
 # Upgrade
@@ -847,6 +866,7 @@ if [ $GTK ]; then
 	if [ ! -z "${news}" ]; then
 		eselect news list | sed -n 's/ N //p' > "${tmpFile["logs"]}"
 		index=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f1) )
+		unset date title
 		for i in ${!index[@]}; do
 			read date[$i] title[$i] <<< $( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | awk '{for (i=2; i<=NF; i++) printf "%s " ,$i }' )
 		done
@@ -863,7 +883,7 @@ if [ $GTK ]; then
 	fi	
 
 	# update portage?
-	if [ $UPDATE_PORTAGE ]; then
+	if [ $UPDATE_PORTAGE ] || [ ! $SYNC ]; then
 		zenity_upgrade sys-apps/portage
 		[ $? -gt 10 ] && exit $(( $?-10 ))
 	fi
