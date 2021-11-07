@@ -470,8 +470,8 @@ zenity_emerge() {
 	message=( "${message[@]}" $( grep -Fn ' * IMPORTANT:' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) )
 	
 	for i in ${!message[@]}; do
-		case sed -n "${message[$i]}p" "${tmpFile["logs"]}" in
-		 IMPORTANT: *)
+		case $( sed -n "${message[$i]}p" "${tmpFile["logs"]}" ) in
+		 IMPORTANT:*)
 			title="Configuration file needs update"
 			start=$(( ${message[$i]} ))
 			;;
