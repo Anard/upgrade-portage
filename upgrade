@@ -394,32 +394,34 @@ zenity_emerge() {
 		 'upgrade')
 			unset edited
 
-			new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
-			[ ! -z $new ] && [ $new -gt $emerging ] && emerging=$new && edited=1
+			if [ -f "$(tmpFile["logs"]}" ]; then
+				new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
+				[ ! -z $new ] && [ $new -gt $emerging ] && emerging=$new && edited=1
 
-			new=$( get_line Installing | awk -F[\(\)\ ] '{ print $4 }' )
-			[ ! -z $new ] && [ $new -gt $installing ] && installing=$new && edited=1
+				new=$( get_line Installing | awk -F[\(\)\ ] '{ print $4 }' )
+				[ ! -z $new ] && [ $new -gt $installing ] && installing=$new && edited=1
 
-			if [ $edited ]; then
-				cur_package=$( get_line | awk -F' ' '{ print $6 }' )
-				cur_package=${cur_package%-[0-9]*}
-				
-				[ -z $current ] || last=$current
-				for current in ${!packList[@]}; do
-					if [ "${packList[$current]}" = "${cur_package}" ]; then
-						if [ $installing -eq $emerging ]; then
-							[ ${mergeEst[$current]} -eq 0 ] && add=$(( 8*${avMergeEst}/10 )) || add=0
-						elif [ $installing -gt 0 ]; then
-							[ ${mergeEst[$last]} -eq 0 ] && add=$(( 2*${avMergeEst}/10 )) || add=${mergeEst[$last]}
-							for i in ${!elapsed_h[@]}; do
-								elapsed_h[$i]=0
-							done
-						else add=0
+				if [ $edited ]; then
+					cur_package=$( get_line | awk -F' ' '{ print $6 }' )
+					cur_package=${cur_package%-[0-9]*}
+					
+					[ -z $current ] || last=$current
+					for current in ${!packList[@]}; do
+						if [ "${packList[$current]}" = "${cur_package}" ]; then
+							if [ $installing -eq $emerging ]; then
+								[ ${mergeEst[$current]} -eq 0 ] && add=$(( 8*${avMergeEst}/10 )) || add=0
+							elif [ $installing -gt 0 ]; then
+								[ ${mergeEst[$last]} -eq 0 ] && add=$(( 2*${avMergeEst}/10 )) || add=${mergeEst[$last]}
+								for i in ${!elapsed_h[@]}; do
+									elapsed_h[$i]=0
+								done
+							else add=0
+							fi
+							elapsed=$(( $elapsed + $add ))
+							break
 						fi
-						elapsed=$(( $elapsed + $add ))
-						break
-					fi
-				done
+					done
+				fi
 			fi
 		
 			if [ $emerging -gt 0 ]; then
