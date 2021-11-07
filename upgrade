@@ -860,6 +860,10 @@ if [ $SYNC ]; then
 		else set_param 'portage' 0
 		fi
 	fi
+else 
+	if type eix &> /dev/null; then
+		eix -qu sys-apps/portage && set_param 'portage' 1 || set_param 'portage' 0
+	else set_param 'portage' 1
 fi
 
 # Upgrade
@@ -887,7 +891,7 @@ if [ $GTK ]; then
 	fi	
 
 	# update portage?
-	if [ $UPDATE_PORTAGE ] || [ ! $SYNC ]; then
+	if [ $UPDATE_PORTAGE ]; then
 		zenity_upgrade sys-apps/portage
 		[ $? -gt 10 ] && exit $(( $?-10 ))
 	fi
