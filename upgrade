@@ -465,35 +465,28 @@ zenity_emerge() {
 	fi
 
 	# Print messages from emerging
-	# $message is a table of a new messages lines
-	message=( $( grep -Fn ' * IMPORTANT:' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) )
+	# $message is a table of a new messages line
+	[ $ACTION = 'upgrade' ] && message=( $( grep -Fn 'Message for package' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) ) || message=( )
+	message=( "${message[@]}" $( grep -Fn ' * IMPORTANT:' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) )
+	
 	for i in ${!message[@]}; do
-		start=$(( ${message[$i]}+1 ))
+		case sed -n "${message[$i]}p" "${tmpFile["logs"]}" in
+		 IMPORTANT: *)
+			title="Configuration file needs update"
+			start=$(( ${message[$i]} ))
+			;;
+		 *)
+			package=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" )
+			title="Messages from ${package}"
+			start=$(( ${message[$i]}+2 ))
+			;;
+		esac
 		[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
-
-		#print message
+		
+		# print messages
 		sed -n "${start},${end}p" "${tmpFile["logs"]}" \
-		| zenity --width 500 --height 300 --window-icon "${iconPath}" --warning --title "Configuration file needs update"
+		| zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --title "${title}"
 	done
-
-	if [ $ACTION = 'upgrade' ]; then
-		if [ -f "${portage_log}" ]; then
-			# $message is a table of a new messages lines
-			message=( $( grep -Fn '>>>' "${portage_log}" | awk -F: '{print $1}' ) )
-			unset package
-			for i in ${!message[@]}; do
-				[ $last_line -ge ${message[$i]} ] && continue
-				#get package name
-				package[$i]=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" )
-				start=$(( ${message[$i]}+2 ))
-				[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
-
-				#print message
-				sed -n "${start},${end}p" "${portage_log}" \
-				| zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --title "Messages from ${package[$i]}"
-			done
-		fi
-	fi
 
 	cat "${tmpFile["logs"]}"
 	#error
