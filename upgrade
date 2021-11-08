@@ -466,7 +466,7 @@ zenity_emerge() {
 
 	# Print messages from emerging
 	# $message is a table of a new messages line
-	[ $ACTION = 'upgrade' ] && message=( $( grep -Fn 'Message for package' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) ) || message=( )
+	[ $ACTION = 'upgrade' ] && message=( $( grep -Fn 'Messages for package' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) ) || message=( )
 	message=( "${message[@]}" $( grep -Fn ' * IMPORTANT:' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) )
 	
 	for i in ${!message[@]}; do
@@ -476,9 +476,9 @@ zenity_emerge() {
 			start=$(( ${message[$i]} ))
 			;;
 		 *)
-			package=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${portage_log}" )
-			title="Messages from ${package}"
-			start=$(( ${message[$i]}+2 ))
+			package=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${tmpFile["logs"]}" )
+			title="Messages for ${package}"
+			start=$(( ${message[$i]}+1 ))
 			;;
 		esac
 		[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
