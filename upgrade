@@ -226,6 +226,8 @@ zenity_emerge() {
 	 	 	 	exit 255
 	 	 	 	;;
 	 	 	esac
+	 	 	
+	 	 	shift 2
 	 	done
 	 	unset total
 	 	cleaning=0
