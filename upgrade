@@ -505,6 +505,163 @@ zenity_upgrade () {
 	[ $# -eq 1 ] || return 255
 	case $1 in
 	 '--depclean')
+		ACTION='depclean'
+		opt='-depclean'
+		;;
+	 *)
+	 	ACTION='upgrade'
+	 	opt=" $1"
+	 	;;	
+	esac
+	
+	# First check
+	zenity_emerge --check${opt}
+	ret=$?
+	[ $ret -gt 0 ] && return $(( $ret+10 ))
+	
+	# nothing found
+	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
+	
+	case $ACTION in
+	 'depclean')
+		title="unmerged"
+		number=$( sed -n '$p' "${tmpFile["logs"]}" | awk -F' ' '{print $4}' )
+		# remove unwanted lines from output
+		sed -i '/\//!d' "${tmpFile["logs"]}"
+		sed -i '/=/d' "${tmpFile["logs"]}"
+		sed -i '/*/d' "${tmpFile["logs"]}"
+
+		package=( $( cut -d: -f1 "${tmpFile["logs"]}" ) )
+		unset versions selected protected omitted
+		for i in ${!package[@]}; do
+			versions[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["logs"]}" | cut -d: -f2 )
+			read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
+		done
+		
+
+
+
+		choice=( $(
+			for i in ${!package[@]}; do
+				echo -e "TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
+			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${title}" --text "Uncheck package you want to preserve" )
+		)
+		
+		;;
+		
+		
+		
+	'upgrade')
+		title="merged"
+		messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
+		sed -i '/^\[/!d' "${tmpFile["logs"]}"
+		# list of all packages that would be merged
+		list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
+		number=${#list[@]}
+		# prepare output and ask for final choice
+		unset package version action current time time_h
+		for i in ${!list[@]}; do
+			package[$i]=${list[$i]%-[0-9]*}
+			version[$i]=${list[$i]#${package[$i]}-}
+			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
+			grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
+			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
+			time_h[$i]=""
+		done
+
+		# Build time estimation
+		avg=0   #average estimations
+		nb=0    #number of packages found
+		if [ $ESTIMATE ]; then
+			# estimate each time
+			echo -e "${green}Estimating merge time...${normal}"
+			for i in ${!list[@]}; do
+				time[$i]=$( get_av_merge "${package[$i]}" )
+				if [ -z ${time[$i]} ]; then
+					echo "Unknown merge time for ${package[$i]}"
+					time[$i]=0
+					time_h[$i]='???'
+				else
+					avg=$(( $avg+${time[$i]} ))
+					nb=$(( $nb+1 ))
+
+					declare -A time_hum
+					get_human_time time_hum ${time[$i]}
+					time_h[$i]=$( print_human_time time_hum )
+					unset time_hum
+					
+					echo "Average merge time for ${package[$i]} is ${time_h[$i]}"
+				fi
+			done
+		fi
+
+		# final average time
+		if [ $nb -gt 0 ]; then
+			avg=$(( $avg/$nb ))
+		else avg=10
+		fi
+		;;
+	esac
+
+
+
+
+
+
+
+
+
+
+
+		case ${UP} in
+		 @*)
+		 	check="TRUE\n"
+			options="--checklist --column merge"
+			[ $ESTIMATE ] || options="--hide-column 6 ${options}"
+			text="Uncheck packages you want to exclude\n"
+			;;
+		 *)
+		 	check=""
+			options=""
+			[ $ESTIMATE ] || options="--hide-column 5"		 	
+			text=""
+		esac
+		text+="${messages}"
+		;;
+	
+	
+	
+	
+	#################
+	
+		
+	[ $number -gt 1 ] && plur="s" || plur =""
+	title="${number} package${plur} should be ${title}" 
+	
+	
+	
+	#############
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	 '--depclean')
 		# DEPCLEAN
 		
 		# First check
