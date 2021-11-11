@@ -63,7 +63,7 @@ get_line () {
 ## OPTION:	-n: no end of line
 ##			-r REMOVE:	remove REMOVE from print
 print_line () {
-	option=""; remove="^"
+	local option=""; local remove="^"
 	while [ $# -gt 0 ]; do
 		case "$1" in
 		 "-n")
@@ -86,7 +86,7 @@ print_line () {
 ## USAGE: prepare_for_exit [command-to-kill] [...]
 prepare_for_exit () {
 	# get params
-	functions=( "$@" )
+	local functions=( "$@" )
 
 	# kill launched function
 	for func in "${functions[@]}"; do
@@ -146,7 +146,7 @@ get_human_time () {
 			;;
 		esac
 	else
-		machine=$2
+		local machine=$2
 		array["d"]=$(( $machine/86400 ))
 		machine=$(( $machine%86400 ))
 		array["h"]=$(( $machine/3600 ))
@@ -166,7 +166,7 @@ print_human_time () {
 	fi
 	
 	declare -n array=$1
-	return_str=""
+	local return_str=""
 	[ ${array["d"]} -gt 0 ] && return_str="${return_str}${array["d"]} days "
 	[ ${array["d"]} -gt 0 ] || [ ${array["h"]} -gt 0 ] && return_str="${return_str}${array["h"]}:"
 	[ ${array["m"]} -gt 9 ] && return_str="${return_str}${array["m"]}:" || return_str="${return_str}0${array["m"]}:"
@@ -179,7 +179,7 @@ print_human_time () {
 ## USAGE: get_av_merge PACKAGE
 get_av_merge () {
 	if [ $# -gt 0 ]; then
-		package=$1
+		local package=$1
 		echo $( qlop -amMC "$package" | awk -F' ' '{print $2}' )
 	fi
 }
@@ -193,33 +193,33 @@ zenity_emerge() {
 	
 	case $1 in
 	 -s|--sync)
-	 	ACTION='sync'
-	 	options="--pulsate"
-	 	title="Syncing repositories"
-	 	slp=.5
-	 	exFuncs=( rsync emerge )
-	 	exText="An error occurred while syncing, please check logs"
-	 	exCode=2
+	 	local ACTION='sync'
+	 	local options="--pulsate"
+	 	local title="Syncing repositories"
+	 	local slp=.5
+	 	local exFuncs=( rsync emerge )
+	 	local exText="An error occurred while syncing, please check logs"
+	 	local exCode=2
 	 	;;
 	 -C|--check-depclean)
-	 	ACTION='check-depclean'
-	 	title="Preparing for cleaning"
-	 	options="--pulsate"
-	 	slp=.5
-	 	exFunc=( emerge )
-	 	exText="An error occurred while checking for obsolete packages, please check logs"
-	 	exCode=5
+	 	local ACTION='check-depclean'
+	 	local title="Preparing for cleaning"
+	 	local options="--pulsate"
+	 	local slp=.5
+	 	local exFunc=( emerge )
+	 	local exText="An error occurred while checking for obsolete packages, please check logs"
+	 	local exCode=5
 	 	;;
 	 -c|--depclean)
-	 	ACTION='depclean'
-	 	title="Cleaning your system"
-	 	slp=.5
-	 	shift
-	 	options=""; excluded=""
+	 	local ACTION='depclean'
+	 	local title="Cleaning your system"
+	 	local slp=.5
+	 	local shift
+	 	local options=""; excluded=""
 	 	while [ $# -gt 1 ]; do
 	 		case $1 in
 	 	 	 --exclude)
-	 	 	 	excluded="$2"
+	 	 	 	local excluded="$2"
 	 	 		;;
 	 	 	 *)
 	 	 	 	echo "Parametor error for function zenity_emerge"
@@ -230,16 +230,16 @@ zenity_emerge() {
 	 	 	shift 2
 	 	done
 	 	unset total
-	 	cleaning=0
-	 	percent=0
-	 	exFuncs=( emerge )
-	 	exText="An error occurred while cleaning systtem, please check logs"
-	 	exCode=6
+	 	local cleaning=0
+	 	local percent=0
+	 	local exFuncs=( emerge )
+	 	local exText="An error occurred while cleaning systtem, please check logs"
+	 	local exCode=6
 		;;
 	 -k|--check)
 		[ $# -eq 2 ] || return 255
-	 	ACTION='check'
-	 	UP=$2
+	 	local ACTION='check'
+	 	local UP=$2
 		case $UP in
 		 @*)
 		 	title="Checking for upgrades"
@@ -248,32 +248,32 @@ zenity_emerge() {
 		 	title="Checking for ${UP} upgrade"
 		 	;;
 		esac
-		options="--pulsate"
-		slp=.5
-	 	exFuncs=( emerge )
-	 	exText="An error occurred while checking dependencies, please check logs"
-	 	exCode=3
+		local options="--pulsate"
+		local slp=.5
+	 	local exFuncs=( emerge )
+	 	local exText="An error occurred while checking dependencies, please check logs"
+	 	local exCode=3
 	 	;;
 	 	
 	 *)
-	 	ACTION='upgrade'
+	 	local ACTION='upgrade'
 	 	[ $1 = "--upgrade" ] && shift
-	 	UP=$1
+	 	local UP=$1
 		case $UP in
 		 "@world")
-			title="Upgrading your system"
+			local title="Upgrading your system"
 			;;
 		 @*)
-			title="Upgrading ${UP}"
+			local title="Upgrading ${UP}"
 			;;
 		 *)
-		 	pack=${UP#*/}
-		 	title="Upgrading ${pack^}"
+		 	local pack=${UP#*/}
+		 	local title="Upgrading ${pack^}"
 			;;
 		esac
-		slp=1
+		local slp=1
 	 	shift
-	 	options=""; excluded="" 	
+	 	local options=""; local excluded="" 	
 	 	while [ $# -gt 1 ]; do
 	 		case $1 in
 	 	 	 --choice)
@@ -286,7 +286,7 @@ zenity_emerge() {
 	 	 	 	excluded="$2"
 	 	 		;;
 	 	 	 --average)
-	 	 	 	avMergeEst=$2
+	 	 	 	local avMergeEst=$2
 	 	 	 	;;
 	 	 	 *)
 	 	 	 	echo "Parametor error for function zenity_emerge"
@@ -301,18 +301,18 @@ zenity_emerge() {
 		portage_log="/var/log/portage/elog/summary.log"
 		[ -f "${portage_log}" ] && last_line=$( wc -l < "${portage_log}" ) || last_line=0
 		# total time
-		total=0
+		local total=0
 		for i in ${!packList[@]}; do
 			[ ${mergeEst[$i]} -eq 0 ] && add=$avg || add=${mergeEst[$i]}
 			total=$(( $total+$add ))
 		done
 		# elapsed for calculating percentage & elapsed_h to print current package's merge time
-		emerging=0; installing=0
-		percent=0; elapsed=0;
+		local emerging=0; local installing=0
+		local percent=0; local elapsed=0;
 		declare -A elapsed_h=( ['machine']=0 ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
-	 	exFuncs=( emerge )
-	 	exText="An error occurred while upgrading system, please check logs"
-	 	exCode=4
+	 	local exFuncs=( emerge )
+	 	local exText="An error occurred while upgrading system, please check logs"
+	 	local exCode=4
 		;;
 	esac
 
@@ -468,7 +468,7 @@ zenity_emerge() {
 
 	# Print messages from emerging
 	# $message is a table of a new messages line
-	[ $ACTION = 'upgrade' ] && message=( $( grep -Fn 'Messages for package' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) ) || message=( )
+	[ $ACTION = 'upgrade' ] && local message=( $( grep -Fn 'Messages for package' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) ) || local message=( )
 	message=( "${message[@]}" $( grep -Fn ' * IMPORTANT:' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) )
 	
 	for i in ${!message[@]}; do
@@ -505,12 +505,12 @@ zenity_upgrade () {
 	[ $# -eq 1 ] || return 255
 	case $1 in
 	 '--depclean')
-		ACTION='depclean'
-		opt='-depclean'
+		local ACTION='depclean'
+		local opt='-depclean'
 		;;
 	 *)
-	 	ACTION='upgrade'
-	 	opt=" $1"
+	 	local ACTION='upgrade'
+	 	local opt=" $1"
 	 	;;	
 	esac
 	
@@ -530,39 +530,40 @@ zenity_upgrade () {
 	# nothing found
 	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
 	
-	text="Uncheck packages you want to exclude\n"
+	local text="Uncheck packages you want to exclude\n"
 	case $ACTION in
 	 'depclean')
-		title="unmerged"
-		number=$( sed -n '$p' "${tmpFile["logs"]}" | awk -F' ' '{print $4}' )
+		local title="unmerged"
+		local number=$( sed -n '$p' "${tmpFile["logs"]}" | awk -F' ' '{print $4}' )
 		# remove unwanted lines from output
 		sed -i '/\//!d' "${tmpFile["logs"]}"
 		sed -i '/=/d' "${tmpFile["logs"]}"
 		sed -i '/*/d' "${tmpFile["logs"]}"
 
-		package=( $( cut -d: -f1 "${tmpFile["logs"]}" ) )
+		local package=( $( cut -d: -f1 "${tmpFile["logs"]}" ) )
 		unset versions selected protected omitted line
 		for i in ${!package[@]}; do
 			versions[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["logs"]}" | cut -d: -f2 )
 			read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
 			line[$i]="TRUE\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
 		done
-		action=( ${selected[@]} )
-		version=( ${protected[@]} )
-		current=( ${omitted[@]} )
+		local action=( ${selected[@]} )
+		local version=( ${protected[@]} )
+		local current=( ${omitted[@]} )
 		unset versions selected protected omitted
 
-		options="--checklist --column unmerge --column 'package' --column 'selected' --column 'protected' --column 'omitted'"
-		aborted=1
+		local options="--checklist --column unmerge --column 'package' --column 'selected' --column 'protected' --column 'omitted'"
+		local aborted=1
 		;;
 
 	'upgrade')
-		title="merged"
-		messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
+		local title="merged"
+		local messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
 		sed -i '/^\[/!d' "${tmpFile["logs"]}"
 		# list of all packages that would be merged
-		list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
-		number=${#list[@]}
+		local list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
+		local number=${#list[@]}
+
 		# prepare output and ask for final choice
 		unset package version action current time time_h line
 		for i in ${!list[@]}; do
@@ -575,8 +576,8 @@ zenity_upgrade () {
 		done
 
 		# Build time estimation
-		avg=0   #average estimations
-		nb=0    #number of packages found
+		local avg=0   #average estimations
+		local nb=0    #number of packages found
 		if [ $ESTIMATE ]; then
 			# estimate each time
 			echo -e "${green}Estimating merge time...${normal}"
@@ -630,8 +631,8 @@ zenity_upgrade () {
 		unset action version current
 		;;
 	esac	
-		
-	[ $number -gt 1 ] && plur="s" || plur =""
+	
+	[ $number -gt 1 ] && plur="s" || plur=""
 	title="${number} package${plur} should be ${title}" 
 	
 	choice=( $(
@@ -655,7 +656,7 @@ zenity_upgrade () {
 	fi
 
 	# get excluded packages list
-	exclude=""
+	local exclude=""
 	if [[ "${package[@]}" != "${choice[@]}" ]]; then
 		j=0
 		for i in ${!package[@]}; do
