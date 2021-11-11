@@ -552,7 +552,7 @@ zenity_upgrade () {
 		local current=( ${omitted[@]} )
 		unset versions selected protected omitted
 
-		local options="--checklist --column unmerge --column 'package' --column 'selected' --column 'protected' --column 'omitted'"
+		local options="--checklist --column unmerge --column package --column selected --column protected --column omitted"
 		local aborted=1
 		;;
 
@@ -607,18 +607,17 @@ zenity_upgrade () {
 		else avg=10
 		fi
 		
-		options+="--column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time'"
+		local options="--column package --column action --column version --column current --column time"
 		case ${UP} in
 		 @*)
 		 	check="TRUE\n"
 			options="--checklist --column merge ${options}"
-			[ $ESTIMATE ] || options="--hide-column 6 ${options}"
+			[ $ESTIMATE ] || options+=" --hide-column 6"
 			aborted=1
 			;;
 		 *)
 		 	check=""
-			options=""
-			[ $ESTIMATE ] || options="--hide-column 5"		 	
+			[ $ESTIMATE ] || options+=" --hide-column 5"		 	
 			text=""
 			aborted=11
 			;;
@@ -631,7 +630,7 @@ zenity_upgrade () {
 		unset action version current
 		;;
 	esac	
-	
+	echo ${line[@]}
 	[ $number -gt 1 ] && plur="s" || plur=""
 	title="${number} package${plur} should be ${title}" 
 	
@@ -643,12 +642,12 @@ zenity_upgrade () {
 	
 	ret=$?
 	if [ "$ACTION" = "upgrade" ]; then
-		[ ${UP:0:1} = '@' ] || choice=( ${package[@]} )
+		[ "${UP:0:1}" = '@' ] || choice=( ${package[@]} )
 	fi
 	if [ "$ret" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
 		echo -e "${orange}Aborted${normal}"
 		prepare_for_exit
-		if [ "$ACTION" = "upgrade" ] && [ ${UP:0:1} = '@' ]; then
+		if [ "$ACTION" = "upgrade" ] && [ "${UP:0:1}" = '@' ]; then
 			return 11
 		else
 			return 1
