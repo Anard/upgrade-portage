@@ -517,11 +517,20 @@ zenity_upgrade () {
 	# First check
 	zenity_emerge --check${opt}
 	ret=$?
-	[ $ret -gt 0 ] && return $(( $ret+10 ))
+	if [ $ret -gt 1 ]; then
+		return $(( $ret+10 ))
+	elif [ $ret -gt 0 ]; then
+		if [ "$ACTION" = "depclean" ] || [ "${UP:0:1}" = "@" ]; then
+		 	return 11
+		else
+		 	return 1
+		fi
+	fi
 	
 	# nothing found
 	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
 	
+	text="Uncheck packages you want to exclude\n"
 	case $ACTION in
 	 'depclean')
 		title="unmerged"
@@ -532,25 +541,21 @@ zenity_upgrade () {
 		sed -i '/*/d' "${tmpFile["logs"]}"
 
 		package=( $( cut -d: -f1 "${tmpFile["logs"]}" ) )
-		unset versions selected protected omitted
+		unset versions selected protected omitted line
 		for i in ${!package[@]}; do
 			versions[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["logs"]}" | cut -d: -f2 )
 			read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
+			line[$i]="TRUE\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
 		done
-		
+		action=( ${selected[@]} )
+		version=( ${protected[@]} )
+		current=( ${omitted[@]} )
+		unset versions selected protected omitted
 
-
-
-		choice=( $(
-			for i in ${!package[@]}; do
-				echo -e "TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
-			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${title}" --text "Uncheck package you want to preserve" )
-		)
-		
+		options="--checklist --column unmerge --column 'package' --column 'selected' --column 'protected' --column 'omitted'"
+		aborted=1
 		;;
-		
-		
-		
+
 	'upgrade')
 		title="merged"
 		messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
@@ -559,7 +564,7 @@ zenity_upgrade () {
 		list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
 		number=${#list[@]}
 		# prepare output and ask for final choice
-		unset package version action current time time_h
+		unset package version action current time time_h line
 		for i in ${!list[@]}; do
 			package[$i]=${list[$i]%-[0-9]*}
 			version[$i]=${list[$i]#${package[$i]}-}
@@ -600,255 +605,90 @@ zenity_upgrade () {
 			avg=$(( $avg/$nb ))
 		else avg=10
 		fi
-		;;
-	esac
-
-
-
-
-
-
-
-
-
-
-
+		
+		options+="--column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time'"
 		case ${UP} in
 		 @*)
 		 	check="TRUE\n"
-			options="--checklist --column merge"
+			options="--checklist --column merge ${options}"
 			[ $ESTIMATE ] || options="--hide-column 6 ${options}"
-			text="Uncheck packages you want to exclude\n"
+			aborted=1
 			;;
 		 *)
 		 	check=""
 			options=""
 			[ $ESTIMATE ] || options="--hide-column 5"		 	
 			text=""
+			aborted=11
+			;;
 		esac
 		text+="${messages}"
+				
+		for i in ${!package[@]}; do
+			line[$i]="${check}${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
+		done
+		unset action version current
 		;;
-	
-	
-	
-	
-	#################
-	
+	esac	
 		
 	[ $number -gt 1 ] && plur="s" || plur =""
 	title="${number} package${plur} should be ${title}" 
 	
-	
-	
-	#############
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	 '--depclean')
-		# DEPCLEAN
-		
-		# First check
-		zenity_emerge --check-depclean
-		ret=$?
-		[ $ret -gt 0 ] && return $(( $ret+10 ))
-	 	
-	 	# nothing to clean
-		[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 0
-		
-		remove=$( sed -n '$p' "${tmpFile["logs"]}" | awk -F' ' '{print $4}' )
-		# remove unwanted lines from output
-		sed -i '/\//!d' "${tmpFile["logs"]}"
-		sed -i '/=/d' "${tmpFile["logs"]}"
-		sed -i '/*/d' "${tmpFile["logs"]}"
-
-		package=( $( cut -d: -f1 "${tmpFile["logs"]}" ) )
-		unset versions selected protected omitted
+	choice=( $(
 		for i in ${!package[@]}; do
-			versions[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["logs"]}" | cut -d: -f2 )
-			read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
-		done
-		
-		[ $remove -gt 1 ] && plur="s" || plur =""
-		title="${remove} package${plur} should be unmerged"
-		
-		choice=( $(
-			for i in ${!package[@]}; do
-				echo -e "TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
-			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'remove' --column 'package' --column 'version' --column 'protected' --column 'omitted' --separator ' ' --title "${title}" --text "Uncheck package you want to preserve" )
-		)
-		if [ "$?" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
-			echo -e "${orange}Aborted${normal}"
-			prepare_for_exit
+			echo -e "${line[$i]}"
+		done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
+	)
+	
+	ret=$?
+	if [ "$ACTION" = "upgrade" ]; then
+		[ ${UP:0:1} = '@' ] || choice=( ${package[@]} )
+	fi
+	if [ "$ret" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
+		echo -e "${orange}Aborted${normal}"
+		prepare_for_exit
+		if [ "$ACTION" = "upgrade" ] && [ ${UP:0:1} = '@' ]; then
+			return 11
+		else
 			return 1
 		fi
+	fi
 
-		# get excluded packages list
-		exclude=""
-		if [[ "${package[@]}" != "${choice[@]}" ]]; then
-			j=0
-			for i in ${!package[@]}; do
-				if [ "${choice[$j]}" = "${package[$i]}" ]; then
-					j=$(( $j+1 ))
-				else
-					exclude+=" --exclude ${package[$i]}"
-				fi
-			done
-		fi
-		unset remove package selected protected omitted choice
-	 	
-		# finally clean
-		zenity_emerge --depclean --exclude "${exclude}"
-		ret=$?
-		[ $ret -gt 0 ] && ret=$(( $ret+10 ))
+	# get excluded packages list
+	exclude=""
+	if [[ "${package[@]}" != "${choice[@]}" ]]; then
+		j=0
+		for i in ${!package[@]}; do
+			if [ "${choice[$j]}" = "${package[$i]}" ]; then
+				j=$(( $j+1 ))
+			else
+				exclude+=" --exclude ${package[$i]}"
+				[ "$ACTION" = "upgrade" ] && time=( ${time[@]:0:$i} ${time[@]:$i+1} )
+			fi
+		done
+	fi
+	unset package
+	
+	# finally emerge
+	case $ACTION in
+	 'depclean')
+	 	options="--depclean"
+	 	;;
+	 'upgrade')
+	 	options="${UP} --choice choice --time time --average $avg"
+	 	;;
+	esac
+	
+	zenity_emerge ${options} --exclude "${exclude}"
+	[ $? -gt 0 ] && ret=$(( $?+10 )) || ret=0
+	
+	case $ACTION in
+	 'depclean')
 		if [ ! -s "${tmpFile["logs"]}" ] && [ -z "$exclude" ]; then
 			ret=1
 		fi
 		;;
-		
-	 *)
-		# UPGRADE
-	 	UP=$1
-
-		# First check
-		zenity_emerge --check ${UP}
-		ret=$?
-		if [ $ret -gt 1 ]; then
-			return $(( $ret+10 ))
-		elif [ $ret -gt 0 ]; then
-			case ${UP} in
-			 @*)
-			 	return 11
-			 	;;
-			 *)
-			 	return 1
-			 	;;
-			esac
-		fi
-
-		# nothing to merge
-		[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
-			
-		messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
-		sed -i '/^\[/!d' "${tmpFile["logs"]}"
-		# list of all packages that would be merged
-		list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
-		# prepare output and ask for final choice
-		unset package version action current time time_h
-		for i in ${!list[@]}; do
-			package[$i]=${list[$i]%-[0-9]*}
-			version[$i]=${list[$i]#${package[$i]}-}
-			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
-			grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
-			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
-			time_h[$i]=""
-		done
-
-		# Build time estimation
-		avg=0   #average estimations
-		nb=0    #number of packages found
-		if [ $ESTIMATE ]; then
-			# estimate each time
-			echo -e "${green}Estimating merge time...${normal}"
-			for i in ${!list[@]}; do
-				time[$i]=$( get_av_merge "${package[$i]}" )
-				if [ -z ${time[$i]} ]; then
-					echo "Unknown merge time for ${package[$i]}"
-					time[$i]=0
-					time_h[$i]='???'
-				else
-					avg=$(( $avg+${time[$i]} ))
-					nb=$(( $nb+1 ))
-
-					declare -A time_hum
-					get_human_time time_hum ${time[$i]}
-					time_h[$i]=$( print_human_time time_hum )
-					unset time_hum
-					
-					echo "Average merge time for ${package[$i]} is ${time_h[$i]}"
-				fi
-			done
-		fi
-
-		# final average time
-		if [ $nb -gt 0 ]; then
-			avg=$(( $avg/$nb ))
-		else avg=10
-		fi
-		
-		[ ${#list[@]} -gt 1 ] && plur="s" || plur=""
-		title="${#list[@]} package${plur} should be merged"
-		case ${UP} in
-		 @*)
-		 	check="TRUE\n"
-			options="--checklist --column merge"
-			[ $ESTIMATE ] || options="--hide-column 6 ${options}"
-			text="Uncheck packages you want to exclude\n"
-			;;
-		 *)
-		 	check=""
-			options=""
-			[ $ESTIMATE ] || options="--hide-column 5"		 	
-			text=""
-		esac
-		text+="${messages}"
-		
-		choice=( $(
-			for i in ${!list[@]}; do
-				echo -e "${check}${package[$i]}\n${action[$i]}\n${version[$i]}\n${current[$i]}\n${time_h[$i]}"
-			done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list ${options} --column 'package' --column 'action' --column 'version' --column 'current' --column 'estimated time' --separator ' ' --title "${title}" --text "${text}" )
-		)
-		
-		ret=$?
-		[ ${UP:0:1} = '@' ] || choice=( ${package[@]} )
-		
-		if [ "$ret" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
-			echo -e "${orange}Aborted${normal}"
-			prepare_for_exit
-			case $UP in
-			 @*)
-				return 11
-				;;
-			 *)
-				return 1
-				;;
-			esac
-		fi
-
-		# get excluded packages list
-		exclude=""
-		if [[ "${package[@]}" != "${choice[@]}" ]]; then
-			j=0
-			for i in ${!list[@]}; do
-				if [ "${choice[$j]}" = "${package[$i]}" ]; then
-					j=$(( $j+1 ))
-				else
-					exclude+=" --exclude ${package[$i]}"
-					time=( ${time[@]:0:$i} ${time[@]:$i+1} )
-				fi
-			done
-		fi
-		unset list package version action current
-
-		zenity_emerge ${UP} --choice choice --time time --exclude "${exclude}" --average $avg
-
-		[ $? -gt 0 ] && ret=$(( $?+10 )) || ret=0
+	 'upgrade')
 		if grep "!!! existing preserved libs found" "${tmpFile["logs"]}" &> /dev/null; then
 			ret=3
 		elif [ ! -z "${exclude}" ] || [ ! "${UP}" = "@world" ]; then
