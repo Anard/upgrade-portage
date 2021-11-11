@@ -510,7 +510,8 @@ zenity_upgrade () {
 		;;
 	 *)
 	 	local ACTION='upgrade'
-	 	local opt=" $1"
+	 	local UP=$1
+	 	local opt=" $UP"
 	 	;;	
 	esac
 	
@@ -586,7 +587,7 @@ zenity_upgrade () {
 				if [ -z ${time[$i]} ]; then
 					echo "Unknown merge time for ${package[$i]}"
 					time[$i]=0
-					time_h[$i]='???'
+					time_h[$i]='??:??'
 				else
 					avg=$(( $avg+${time[$i]} ))
 					nb=$(( $nb+1 ))
@@ -630,7 +631,7 @@ zenity_upgrade () {
 		unset action version current
 		;;
 	esac	
-	echo ${line[@]}
+	
 	[ $number -gt 1 ] && plur="s" || plur=""
 	title="${number} package${plur} should be ${title}" 
 	
@@ -663,7 +664,7 @@ zenity_upgrade () {
 				j=$(( $j+1 ))
 			else
 				exclude+=" --exclude ${package[$i]}"
-				[ "$ACTION" = "upgrade" ] && time=( ${time[@]:0:$i} ${time[@]:$i+1} )
+				[ "$ACTION" = "upgrade" ] && time=( ${time[@]:0:$j} ${time[@]:$j+1} )
 			fi
 		done
 	fi
