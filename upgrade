@@ -117,7 +117,7 @@ get_human_time () {
 		shift
 	else unset incr
 	fi
-								
+	
 	if [ $# -lt 2 ]; then
 		echo "Invalid parameter $1 for function get_human_time"
 		return 1
@@ -428,18 +428,18 @@ zenity_emerge() {
 			fi
 		
 			if [ $emerging -gt 0 ]; then
-				# real elapsed time
-				elapsed_h["machine"]=$(( ${elapsed_h["machine"]}+1 ))
-				
+				# human readable elapsed time
+				if [ ! $edited ]; then
+					elapsed_h["machine"]=$(( ${elapsed_h["machine"]}+1 ))
+					get_human_time --increment elapsed_h ${elapsed_h["machine"]}
+				fi
+								
 				# recalculate percentage
 				if [ ${mergeEst[$current]} -eq 0 ]; then
 					percent=$(( 100*${elapsed}/${total} ))
 				elif [ ${elapsed_h["machine"]} -lt ${mergeEst[$current]} ]; then
 					percent=$(( 100* (${elapsed}+${elapsed_h["machine"]}) / ${total} ))
 				fi
-				
-				# human readable elapsed time
-				get_human_time --increment elapsed_h ${elapsed_h["machine"]}
 
 				# print line
 				print_line -n
