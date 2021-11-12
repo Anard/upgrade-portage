@@ -18,4 +18,6 @@ Graphical interface via zenity
 - check portage messages
 - check unified zenity functions
 
+-- error on time ests when exclude packages
+
 - get colored/bold output from emerge to zenity
