@@ -11,6 +11,8 @@ if [ ! -f "${iconPath}" ]; then
 fi
 worldFile="/var/lib/portage/world"
 declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['result']="/tmp/zenity-result" )
+WIDTH=500
+HEIGHT=300
 
 ###### FUNCTIONS
 set_param () {
@@ -297,9 +299,6 @@ zenity_emerge() {
 	 		shift 2
 	 	done
 
-		# get portage log file size
-		portage_log="/var/log/portage/elog/summary.log"
-		[ -f "${portage_log}" ] && last_line=$( wc -l < "${portage_log}" ) || last_line=0
 		# total time
 		local total=0
 		for i in ${!packList[@]}; do
@@ -408,13 +407,13 @@ zenity_emerge() {
 					cur_package=$( get_line | awk -F' ' '{ print $6 }' )
 					cur_package=${cur_package%-[0-9]*}
 					
-					[ -z $current ] || last=$current
-					for current in ${!packList[@]}; do
-						if [ "${packList[$current]}" = "${cur_package}" ]; then
+					[ -z $cur_index ] || last_index=$cur_index
+					for cur_index in ${!packList[@]}; do
+						if [ "${packList[$cur_index]}" = "${cur_package}" ]; then
 							if [ $installing -eq $emerging ]; then
-								[ ${mergeEst[$current]} -eq 0 ] && add=$(( 8*${avMergeEst}/10 )) || add=0
+								[ ${mergeEst[$cur_index]} -eq 0 ] && add=$(( 8*${avMergeEst}/10 )) || add=0
 							elif [ $installing -gt 0 ]; then
-								[ ${mergeEst[$last]} -eq 0 ] && add=$(( 2*${avMergeEst}/10 )) || add=${mergeEst[$last]}
+								[ ${mergeEst[$last_index]} -eq 0 ] && add=$(( 2*${avMergeEst}/10 )) || add=${mergeEst[$last_index]}
 								for i in ${!elapsed_h[@]}; do
 									elapsed_h[$i]=0
 								done
@@ -437,15 +436,15 @@ zenity_emerge() {
 				# recalculate percentage
 				if [ ${mergeEst[$current]} -eq 0 ]; then
 					percent=$(( 100*${elapsed}/${total} ))
-				elif [ ${elapsed_h["machine"]} -lt ${mergeEst[$current]} ]; then
+				elif [ ${elapsed_h["machine"]} -lt ${mergeEst[$cur_index]} ]; then
 					percent=$(( 100* (${elapsed}+${elapsed_h["machine"]}) / ${total} ))
 				fi
 
 				# print line
 				print_line -n
 				print=$( print_human_time elapsed_h )
-				if [ ${mergeEst[$current]} -gt 0 ]; then
-					echo " - ${print} / ${time_h[$current]} (estimated)"
+				if [ ${mergeEst[$cur_index]} -gt 0 ]; then
+					echo " - ${print} / ${time_h[$cur_index]} (estimated)"
 				else echo " - ${print}"
 				fi
 			else
@@ -458,7 +457,7 @@ zenity_emerge() {
 		 	;;
 		esac
 		
-	done | zenity --width 500 --window-icon "${iconPath}" --progress --title "${title}" --text "" --auto-close ${options}
+	done | zenity --width ${WIDTH} --window-icon "${iconPath}" --progress --title "${title}" --text "" --auto-close ${options}
 
 	# Aborted
 	if [ $? -gt 0 ]; then
@@ -487,12 +486,12 @@ zenity_emerge() {
 		
 		# print messages
 		sed -n "${start},${end}p" "${tmpFile["logs"]}" \
-		| zenity --width 500 --height 300 --window-icon "${iconPath}" --text-info --title "${title}"
+		| zenity --width ${WIDTH} --height $(HEIGHT} --window-icon "${iconPath}" --text-info --title "${title}"
 	done
 
 	cat "${tmpFile["logs"]}"
 	#error
-	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width 500 --window-icon "${iconPath}" --error --title "Error" --text "${exText}" && prepare_for_exit && return ${exCode}
+	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title "Error" --text "${exText}" && prepare_for_exit && return ${exCode}
 	
 	rm "${tmpFile["result"]}"
 
@@ -638,7 +637,7 @@ zenity_upgrade () {
 	choice=( $(
 		for i in ${!package[@]}; do
 			echo -e "${line[$i]}"
-		done | zenity --width 650 --height 300 --window-icon "${iconPath}" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
+		done | zenity --width ${WIDTH} --height $(HEIGHT} --window-icon "${iconPath}" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
 	)
 	
 	ret=$?
@@ -792,7 +791,7 @@ for i in "${!repos[@]}"; do
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
 			text1="Sync date for ${repos[$i]##*/} is newer than now"
 			text2=", please correct your local time"
-			[ ! $GTK ] && echo -e "${red}${text1}${normal}${text2}" || zenity --width=500 --window-icon "${iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
+			[ ! $GTK ] && echo -e "${red}${text1}${normal}${text2}" || zenity --width $(WIDTH} --window-icon "${iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
 			echo "Exiting..."
 			exit 1
 		fi
@@ -819,7 +818,7 @@ if [ $now -lt $last ]; then
 	text3="-->" 
 
 	if [ $GTK ]; then
-		if ! zenity --width=300 --window-icon "${iconPath}" --question --title "${text1}" --text "${text2}" --default-cancel; then
+		if ! zenity --width ${WIDTH} --window-icon "${iconPath}" --question --title "${text1}" --text "${text2}" --default-cancel; then
 			set_param 'sync' 0
 		fi
 	else
@@ -889,10 +888,10 @@ if [ $GTK ]; then
 		choice=( $(
 			for i in ${!index[@]}; do
 				echo -e "TRUE\n${index[$i]}\n${title[$i]}\n${date[$i]}"
-			done | zenity --width 500 --height 300 --window-icon "${iconPath}" --list --checklist --column 'read' --column 'index' --column 'Title' --column 'Date' --hide-column 2 --separator ' ' --title "${#index[@]} news need reading" --text "Keep checked those you want to read now" ) )
+			done | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --list --checklist --column 'read' --column 'index' --column 'Title' --column 'Date' --hide-column 2 --separator ' ' --title "${#index[@]} news need reading" --text "Keep checked those you want to read now" ) )
 
 		for i in ${!choice[@]}; do
-			eselect news read ${choice[$i]} | zenity --width=500 --window-icon "${iconPath}" --text-info --height=300 --title "${title[$i]}"
+			eselect news read ${choice[$i]} | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title[$i]}"
 			[ $? -gt 0 ] && eselect news unread ${choice[$i]}
 		done
 	fi	
@@ -913,7 +912,7 @@ if [ $GTK ]; then
 	 	;;
 	 2) # partial
 		text="Partial upgrade is done"
-		zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}"
+		zenity --width ${WIDTH} --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}"
 		exit 0
 	 	;;
 	 3) # preserved libs
@@ -966,7 +965,7 @@ fi
 
 # Finished
 [ $UPGRADE_NEEDED ] && text="Your system is now up to date" || text="Your system is already up to date"
-[ $GTK ] && zenity --width 500 --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}" && prepare_for_exit
+[ $GTK ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}" && prepare_for_exit
 echo "${text}"
 
 exit 0
