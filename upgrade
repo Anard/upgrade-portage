@@ -486,7 +486,7 @@ zenity_emerge() {
 		
 		# print messages
 		sed -n "${start},${end}p" "${tmpFile["logs"]}" \
-		| zenity --width ${WIDTH} --height $(HEIGHT} --window-icon "${iconPath}" --text-info --title "${title}"
+		| zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title}"
 	done
 
 	cat "${tmpFile["logs"]}"
@@ -527,6 +527,8 @@ zenity_upgrade () {
 		fi
 	fi
 	
+	echo 'checked'
+	
 	# nothing found
 	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
 	
@@ -547,9 +549,6 @@ zenity_upgrade () {
 			read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
 			line[$i]="TRUE\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
 		done
-		local action=( ${selected[@]} )
-		local version=( ${protected[@]} )
-		local current=( ${omitted[@]} )
 		unset versions selected protected omitted
 
 		local options="--checklist --column unmerge --column package --column selected --column protected --column omitted"
@@ -637,7 +636,7 @@ zenity_upgrade () {
 	choice=( $(
 		for i in ${!package[@]}; do
 			echo -e "${line[$i]}"
-		done | zenity --width ${WIDTH} --height $(HEIGHT} --window-icon "${iconPath}" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
+		done | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
 	)
 	
 	ret=$?
@@ -791,7 +790,7 @@ for i in "${!repos[@]}"; do
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
 			text1="Sync date for ${repos[$i]##*/} is newer than now"
 			text2=", please correct your local time"
-			[ ! $GTK ] && echo -e "${red}${text1}${normal}${text2}" || zenity --width $(WIDTH} --window-icon "${iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
+			[ ! $GTK ] && echo -e "${red}${text1}${normal}${text2}" || zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
 			echo "Exiting..."
 			exit 1
 		fi
