@@ -180,10 +180,12 @@ print_human_time () {
 # Get average merge time from qlop
 ## USAGE: get_av_merge PACKAGE
 get_av_merge () {
+	local time
 	if [ $# -gt 0 ]; then
 		local package=$1
-		echo $( qlop -amMC "$package" | awk -F' ' '{print $2}' )
+		time=$( qlop -amMC "$package" | awk -F' ' '{print $2}' )
 	fi
+	echo $time
 }
 
 # Emerge via zenity
@@ -526,8 +528,6 @@ zenity_upgrade () {
 		 	return 1
 		fi
 	fi
-	
-	echo 'checked'
 	
 	# nothing found
 	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
