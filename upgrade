@@ -192,7 +192,7 @@ get_av_merge () {
 	local file=( $( ls /var/log/emerge.log* ) )
 	for i in ${!file[@]}; do
 		case ${file[$i]} in
-		 *.gz)
+		 *.gz|*.zip)
 		 	add=$( qlop -amMC "$package" -f <(zcat "${file[$i]}") | awk -F' ' '{print $2}' )
 		 	;;
 		 *)
