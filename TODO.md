@@ -14,6 +14,6 @@ Graphical interface via zenity
 - check unified zenity functions
 - check new get_av_merge function
 
--- error on time ests when exclude packages
+-- error on 'already/now' : always 'already' if nothing to depclean
 
 - get colored/bold output from emerge to zenity

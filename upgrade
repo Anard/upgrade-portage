@@ -343,7 +343,8 @@ zenity_emerge() {
 			emerge --sync 2>&1 > "${tmpFile["logs"]}"
 			res=$?
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
-				echo "Updating eix database"
+				textEix="Updating eix database"
+				echo ${textEix} && echo "# ${textEix}"
 				eix-update
 			fi
 			;;
@@ -681,7 +682,7 @@ zenity_upgrade () {
 				j=$(( $j+1 ))
 			else
 				exclude+=" --exclude ${package[$i]}"
-				[ "$ACTION" = "upgrade" ] && time=( ${time[@]:0:$j} ${time[@]:$j+1} )
+				[ "$ACTION" = "upgrade" ] && time=( ${time[@]:0:$j} ${time[@]:$j+1} ) && time_h=( ${time_h[@]:0:$j} ${time_h[@]:$j+1} )
 			fi
 		done
 	fi
