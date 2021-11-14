@@ -233,6 +233,7 @@ zenity_emerge() {
 	 	local exCode=5
 	 	;;
 	 -c|--depclean)
+	 	shift
 	 	local ACTION='depclean'
 	 	local title="Cleaning your system"
 	 	local slp=.5
@@ -565,7 +566,7 @@ zenity_upgrade () {
 		for i in ${!package[@]}; do
 			versions[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["logs"]}" | cut -d: -f2 )
 			read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
-			line[$i]="TRUE\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
+			line[$i]="TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
 		done
 		unset versions selected protected omitted
 
