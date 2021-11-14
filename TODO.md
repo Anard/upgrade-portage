@@ -11,7 +11,6 @@ Graphical interface via zenity
 - check errors handling from emerge
 - check portage messages
 - check 'IMPORTANT' messages
--- remove '*' from messages
 - check unified zenity functions
 - check new get_av_merge function
 

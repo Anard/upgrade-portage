@@ -507,7 +507,7 @@ zenity_emerge() {
 		[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
 		
 		# print messages
-		sed -n "${start},${end}p" "${tmpFile["logs"]}" \
+		sed -n "${start},${end} s/^ \* //p" "${tmpFile["logs"]}" \
 		| zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title}"
 	done
 
