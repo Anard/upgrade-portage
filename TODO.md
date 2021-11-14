@@ -11,9 +11,8 @@ Graphical interface via zenity
 - check errors handling from emerge
 - check portage messages
 - check 'IMPORTANT' messages
+-- remove '*' from messages
 - check unified zenity functions
 - check new get_av_merge function
-
--- error on 'already/now' : always 'already' if nothing to depclean
 
 - get colored/bold output from emerge to zenity
