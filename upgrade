@@ -967,7 +967,7 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 		 	set_param 'upgrade' 1
 		 	;;
 		 1) # nothing to clean
-		 	set_param 'upgrade' 0
+		 	#set_param 'upgrade' 0
 		 	;;
 		 *) # exit with error
 		 	exit $(( $?-10 ))
@@ -983,7 +983,7 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 fi
 
 # Finished
-[ $UPGRADE_NEEDED ] && text="Your system is now up to date" || text="Your system is already up to date"
+[ $UPGRADE_NEEDED ] && text="Your system is now up to date" || text="Your system was already up to date"
 [ $GTK ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}" && prepare_for_exit
 echo "${text}"
 
