@@ -877,6 +877,10 @@ if [ $SYNC ]; then
 		echo -e "${green}${title}...${nocolor}"
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
+		if type eix &> /dev/null; then
+			echo "Updating eix database"
+			eix-update
+		fi
 	else
 		zenity_emerge --sync
 		ret=$? && [ $ret -gt 0 ] && exit $ret
