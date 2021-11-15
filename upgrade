@@ -805,7 +805,7 @@ echo -e "${green}${text}${nocolor}"
 unset time
 for i in "${!repos[@]}"; do
 	if [ -f "${repos[$i]}/Manifest" ]; then
-		timestamp=$( cat "${repos[$i]}/metadata/timestamp" )
+		timestamp=$( cat "${repos[$i]}/metadata/timestamp.chk" )
 		time[$i]=$( date -d "${timestamp}" "+%s" )
 		text="Last sync for ${repos[$i]##*/} is `date -d @${time[$i]}`"
 		[ ! $QUIET ] || [ $VERBOSE ] && echo "${text}"
