@@ -1,8 +1,6 @@
 Graphical interface via zenity
 - skip pretend & use ask ?
 
-- use timestamp.chk in place of timestamp
-
 - find messages about ebuilds blocked by conflict which don't appear with -q option
 
 - see if -t --tree option can be used in emerge to better understand dependencies

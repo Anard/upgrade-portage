@@ -804,8 +804,8 @@ text="Checking repositories..."
 echo -e "${green}${text}${nocolor}"
 unset time
 for i in "${!repos[@]}"; do
-	if [ -f "${repos[$i]}/Manifest" ]; then
-		timestamp=$( cat "${repos[$i]}/metadata/timestamp" )
+	if [ -f "${repos[$i]}/metadata/timestamp.chk" ]; then
+		timestamp=$( cat "${repos[$i]}/metadata/timestamp.chk" )
 		time[$i]=$( date -d "${timestamp}" "+%s" )
 		text="Last sync for ${repos[$i]##*/} is `date -d @${time[$i]}`"
 		[ ! $QUIET ] || [ $VERBOSE ] && echo "${text}"
@@ -877,6 +877,10 @@ if [ $SYNC ]; then
 		echo -e "${green}${title}...${nocolor}"
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
+		if type eix &> /dev/null; then
+			echo "Updating eix database"
+			eix-update
+		fi
 	else
 		zenity_emerge --sync
 		ret=$? && [ $ret -gt 0 ] && exit $ret
