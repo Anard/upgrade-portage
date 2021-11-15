@@ -43,7 +43,7 @@ set_param () {
 	 	;;
 
 	 *)
-		echo -e "${red}An error occurred while setting parameters${normal}"
+		echo -e "${red}An error occurred while setting parameters${nocolor}"
 		return 1
 		;;
 	esac
@@ -96,7 +96,7 @@ prepare_for_exit () {
 		while pgrep "${func}" &> /dev/null; do
 			sleep .5
 		done
-		echo -e "${orange}Canceled ${func}${normal}"
+		echo -e "${orange}Canceled ${func}${nocolor}"
 	done
 	# delete tmp files
 	for file in ${tmpFile[@]}; do
@@ -336,7 +336,7 @@ zenity_emerge() {
 		;;
 	esac
 
-	echo -e "${green}${title}...${normal}"
+	echo -e "${green}${title}...${nocolor}"
 	(
 		case $ACTION in
 		 'sync')
@@ -602,7 +602,7 @@ zenity_upgrade () {
 		local nb=0    #number of packages found
 		if [ $ESTIMATE ]; then
 			# estimate each time
-			echo -e "${green}Estimating merge time...${normal}"
+			echo -e "${green}Estimating merge time...${nocolor}"
 			for i in ${!list[@]}; do
 				time[$i]=$( get_av_merge "${package[$i]}" )
 				if [ -z ${time[$i]} ]; then
@@ -667,7 +667,7 @@ zenity_upgrade () {
 		[ "${UP:0:1}" = '@' ] || choice=( ${package[@]} )
 	fi
 	if [ "$ret" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
-		echo -e "${orange}Aborted${normal}"
+		echo -e "${orange}Aborted${nocolor}"
 		prepare_for_exit
 		if [ "$ACTION" = "upgrade" ] && [ "${UP:0:1}" = '@' ]; then
 			return 11
@@ -744,7 +744,7 @@ Usage : ${Blue}upgrade${normal} [${Green}OPTIONS${normal}] [${Green}@SET${normal
 
 ${Green}OPTIONS${normal} :
         ${bold}-h|--help${normal}	Print this help and exit
-        ${bold}--version${normal}    Print this script's current version and exit
+        ${bold}-V|--version${normal}    Print this script's current version and exit
         
         ${bold}-q|--quiet${normal}    	Run quietly
         ${bold}-v|--verbose${normal}    Run verbosely
@@ -752,7 +752,7 @@ ${Green}OPTIONS${normal} :
 
         
 ${Green}SET${normal} :
-	Set to upgrade, if not set ${green}@world${normal} will be used
+	Set to upgrade, if not set ${green}@world${nocolor} will be used
 
 HELP
 )
@@ -773,8 +773,8 @@ HELP
 	 "-v"|"--verbose")
 		set_param 'verbose' 1 || exit 255
 		;;
-	 "--version")
-		echo -e "${Orange}${script_name}${normal} for portage based system, version ${orange}${version}${normal}"
+	 "-V"|"--version")
+		echo -e "${Orange}${script_name^}${normal} script for portage based system, version ${orange}${version}${nocolor}"
 		exit 0
 		;;
 
@@ -783,7 +783,7 @@ HELP
 		;;
 
 	 *)
-		echo -e "${red}Unknown parameter ${1}${normal}, exiting..." && exit 255
+		echo -e "${red}Unknown parameter ${1}${nocolor}, exiting..." && exit 255
 		;;
 	esac
 	shift
@@ -801,7 +801,7 @@ repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 # Search for last sync timestamps
 last=0
 text="Checking repositories..."
-echo -e "${green}${text}${normal}"
+echo -e "${green}${text}${nocolor}"
 unset time
 for i in "${!repos[@]}"; do
 	if [ -f "${repos[$i]}/Manifest" ]; then
@@ -813,7 +813,7 @@ for i in "${!repos[@]}"; do
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
 			text1="Sync date for ${repos[$i]##*/} is newer than now"
 			text2=", please correct your local time"
-			[ ! $GTK ] && echo -e "${red}${text1}${normal}${text2}" || zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
+			[ ! $GTK ] && echo -e "${red}${text1}${nocolor}${text2}" || zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
 			echo "Exiting..."
 			exit 1
 		fi
@@ -874,7 +874,7 @@ fi
 if [ $SYNC ]; then
 	if [ ! $GTK ]; then
 		title="Syncing repositories"
-		echo -e "${green}${title}...${normal}"
+		echo -e "${green}${title}...${nocolor}"
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
 	else
@@ -949,13 +949,13 @@ if [ $GTK ]; then
 # Standard upgrade
 else
 	text="Checking for upgrades"
-	echo -e "${green}${text}...${normal}"
+	echo -e "${green}${text}...${nocolor}"
 	emerge -a${QUIET}${VERBOSE}uDN ${SET}
 
 	if [ $? -gt 0 ]; then
 		text1="An error occurred on compilation time"
 		text2="please check logs for more information"
-		echo -e "${red}${text1}${normal}, ${text2}"
+		echo -e "${red}${text1}${nocolor}, ${text2}"
 		exit 4
 	fi
 fi
@@ -980,7 +980,7 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 	# Standard cleaning
 	else
 		text="Cleaning your system"
-		echo -e "${green}${text}...${normal}"
+		echo -e "${green}${text}...${nocolor}"
 		emerge -a${QUIET}${VERBOSE}c || exit 5
 	fi
 fi
