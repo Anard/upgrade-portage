@@ -256,7 +256,7 @@ zenity_emerge() {
 	 	local cleaning=0
 	 	local percent=0
 	 	local exFuncs=( emerge )
-	 	local exText="An error occurred while cleaning systtem, please check logs"
+	 	local exText="An error occurred while cleaning system, please check logs"
 	 	local exCode=6
 		;;
 	 -k|--check)
@@ -496,7 +496,8 @@ zenity_emerge() {
 	message=( "${message[@]}" $( grep -Fn ' * IMPORTANT:' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) )
 	
 	for i in ${!message[@]}; do
-		case $( sed -n "${message[$i]}p" "${tmpFile["logs"]}" ) in
+		mess=$( sed -n "${message[$i]}p" "${tmpFile["logs"]}" )
+		case "${mess# * }" in
 		 IMPORTANT:*)
 			title="Configuration file needs update"
 			start=$(( ${message[$i]} ))
@@ -555,7 +556,7 @@ zenity_upgrade () {
 	# nothing found
 	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
 	
-	local text="Uncheck packages you want to exclude\n"
+	local text="Uncheck packages you want to exclude.\n"
 	case $ACTION in
 	 'depclean')
 		local title="unmerged"
@@ -638,9 +639,9 @@ zenity_upgrade () {
 			aborted=1
 			;;
 		 *)
+		 	text="${UP} needs update, it's highly recommended to do it first.\n"
 		 	check=""
 			[ $ESTIMATE ] || options+=" --hide-column 5"		 	
-			text=""
 			aborted=11
 			;;
 		esac
