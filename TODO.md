@@ -10,9 +10,5 @@ Graphical interface via zenity
 - check errors handling from emerge
 - check portage messages
 - check 'IMPORTANT' messages
-- check unified zenity functions
-
--- no specific messages for upgrading portage is shown
--- IMPORTANT message title is 'Messages for '
 
 - get colored/bold output from emerge to zenity
