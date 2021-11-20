@@ -453,7 +453,7 @@ zenity_emerge() {
 		
 			if [ $emerging -gt 0 ]; then
 				# human readable elapsed time
-				if [ ! $edited ]; then
+				if [ ! $edited ] || [ $installing -eq $emerging ]; then
 					elapsed_h["machine"]=$(( ${elapsed_h["machine"]}+1 ))
 					get_human_time --increment elapsed_h ${elapsed_h["machine"]}
 				fi
