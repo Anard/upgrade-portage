@@ -11,7 +11,7 @@ Graphical interface via zenity
 - check handle of emerge @preserved-rebuild
 - check errors handling from emerge
 - check portage messages
-	-- remove srart & ending blank lines
+	-- check removing start & ending blank lines
 - check 'IMPORTANT' messages
 
 - get colored/bold output from emerge to zenity
