@@ -1,8 +1,6 @@
 Graphical interface via zenity
 - skip pretend & use ask ?
 
-- tail -f to immediately echo logFile, as it could be tailed when upgrading via gtk
-
 - find messages about ebuilds blocked by conflict which don't appear with -q option
 
 - see if -t --tree option can be used in emerge to better understand dependencies
