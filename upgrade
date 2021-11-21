@@ -187,22 +187,21 @@ get_av_merge () {
 	fi
 
 	local add
-	local avgTime=0
-	local num=0
+	local avgTime
 	local file=( $( ls /var/log/emerge.log* ) )
 	for i in ${!file[@]}; do
 		case ${file[$i]} in
 		 *.gz|*.zip)
-		 	add=$( qlop -amMC "$package" -f <(zcat "${file[$i]}") | awk -F' ' '{print $2}' )
+		 	avgTime=$( qlop -amMC "$package" -f <(zcat "${file[$i]}") | awk -F' ' '{print $2}' )
 		 	;;
 		 *)
-		 	add=$( qlop -amMC "$package" -f "${file[$i]}" | awk -F' ' '{print $2}' )
+		 	avgTime=$( qlop -amMC "$package" -f "${file[$i]}" | awk -F' ' '{print $2}' )
 			;;
 		esac
-		[ $add ] && avgTime=$(( ${avgTime} + ${add} )) && num=$(( $num+1 ))
+		[ $avgTime ] && break
 	done
 	
-	[ $num -gt 0 ] && echo $(( $avgTime / $num )) || echo
+	echo $avgTime
 	return 0
 }
 
