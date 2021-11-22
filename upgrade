@@ -1,5 +1,5 @@
 #!/bin/bash
-version="1.04-r1"; script_name=`basename "$0"`
+version="1.04-r2"; script_name=`basename "$0"`
 # Script to sync && upgrade Gentoo portage
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
@@ -187,22 +187,21 @@ get_av_merge () {
 	fi
 
 	local add
-	local avgTime=0
-	local num=0
+	local avgTime
 	local file=( $( ls /var/log/emerge.log* ) )
 	for i in ${!file[@]}; do
 		case ${file[$i]} in
 		 *.gz|*.zip)
-		 	add=$( qlop -amMC "$package" -f <(zcat "${file[$i]}") | awk -F' ' '{print $2}' )
+		 	avgTime=$( qlop -amMC "$package" -f <(zcat "${file[$i]}") | awk -F' ' '{print $2}' )
 		 	;;
 		 *)
-		 	add=$( qlop -amMC "$package" -f "${file[$i]}" | awk -F' ' '{print $2}' )
+		 	avgTime=$( qlop -amMC "$package" -f "${file[$i]}" | awk -F' ' '{print $2}' )
 			;;
 		esac
-		[ $add ] && avgTime=$(( ${avgTime} + ${add} )) && num=$(( $num+1 ))
+		[ $avgTime ] && break
 	done
 	
-	[ $num -gt 0 ] && echo $(( $avgTime / $num )) || echo
+	echo $avgTime
 	return 0
 }
 
@@ -340,30 +339,29 @@ zenity_emerge() {
 	(
 		case $ACTION in
 		 'sync')
-			emerge --sync 2>&1 > "${tmpFile["logs"]}"
+			emerge --sync |& tee "${tmpFile["logs"]}"
 			res=$?
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
-				textEix="Updating eix database"
-				echo ${textEix} && echo "# ${textEix}"
+				echo "Updating eix database"
 				eix-update
 			fi
 			;;
 		 'check-depclean')
-		 	emerge -pqc 2>&1 > "${tmpFile["logs"]}"
+		 	emerge -pqc |& tee "${tmpFile["logs"]}"
 		 	res=$?
 		 	;;
 		 'depclean')
-		 	emerge -qc ${excluded} 2>&1 > "${tmpFile["logs"]}"
+		 	emerge -qc ${excluded} |& tee "${tmpFile["logs"]}"
 		 	res=$?
 		 	;;
 		 'check')
 		 	case ${UP} in
 		 	 @*)
-		 		emerge -pquDN ${UP} 2>&1 > "${tmpFile["logs"]}"
+		 		emerge -pquDN ${UP} |& tee "${tmpFile["logs"]}"
 		 		res=$?
 		 		;;
 		 	 *)
-		 	 	emerge -pqu1 ${UP} 2>&1 > "${tmpFile["logs"]}"
+		 	 	emerge -pqu1 ${UP} |& tee "${tmpFile["logs"]}"
 		 	 	res=$?
 		 	 	;;
 		 	esac
@@ -371,11 +369,11 @@ zenity_emerge() {
 		 'upgrade')
 		 	case ${UP} in
 		 	 @*)
-		 		emerge -quDN ${excluded} ${UP} 2>&1 > "${tmpFile["logs"]}"
+		 		emerge -quDN ${excluded} ${UP} |& tee "${tmpFile["logs"]}"
 		 		res=$?
 		 		;;
 		 	 *)
-		 	 	emerge -qu1 ${UP} 2>&1 > "${tmpFile["logs"]}"
+		 	 	emerge -qu1 ${UP} |& tee "${tmpFile["logs"]}"
 		 	 	res=$?
 		 	 	;;
 		 	esac
@@ -385,7 +383,7 @@ zenity_emerge() {
 	) &
 	sleep .5
 	dots=""
-	
+		
 	while [ ! -f "${tmpFile["result"]}" ]; do
 		sleep $slp
 		
@@ -511,11 +509,10 @@ zenity_emerge() {
 		[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
 		
 		# print messages
-		sed -n "${start},${end}p" "${tmpFile["logs"]}" | sed 's/^ \* //' \
+		sed -n "${start},${end}p" "${tmpFile["logs"]}" | sed 's/^ \* //' | tac | sed '/./,$!d' | tac | sed '/./,$!d' \
 		| zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title}"
 	done
 
-	cat "${tmpFile["logs"]}"
 	#error
 	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title "Error" --text "${exText}" && prepare_for_exit && return ${exCode}
 	
