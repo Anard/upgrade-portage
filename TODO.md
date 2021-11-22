@@ -3,6 +3,8 @@ Graphical interface via zenity
 
 - find messages about ebuilds blocked by conflict which don't appear with -q option
 
+- create table of to-kill functions, when possible use pid in place of function to kill
+
 - see if -t --tree option can be used in emerge to better understand dependencies
 - check progress bar estimation => choice may be longer than emerge list if some packages are excluded
 

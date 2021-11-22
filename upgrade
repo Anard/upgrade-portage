@@ -623,6 +623,12 @@ zenity_upgrade () {
 
 		# final average time
 		if [ $nb -gt 0 ]; then
+			if [ $nb -eq ${#list[@]} ]; then
+				declare -A time_hum
+				get_human_time time_hum $avg
+				text+="Estimated merge time is `print_human_time time_hum`.\n"
+				unset time_hum
+			fi
 			avg=$(( $avg/$nb ))
 		else avg=10
 		fi
