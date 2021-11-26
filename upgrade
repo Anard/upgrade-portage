@@ -1,5 +1,5 @@
 #!/bin/bash
-version="1.04-r2"; script_name=`basename "$0"`
+version="1.04-r3"; script_name=`basename "$0"`
 # Script to sync && upgrade Gentoo portage
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
@@ -92,10 +92,21 @@ prepare_for_exit () {
 
 	# kill launched function
 	for func in "${functions[@]}"; do
-		pkill "${func}"
-		while pgrep "${func}" &> /dev/null; do
-			sleep .5
-		done
+		case ${func} in
+		 *[!0-9]*)
+			pkill "${func}"
+			while pgrep "${func}" &> /dev/null; do
+				sleep .1
+			done
+		 	;;
+		 *)
+			num=$func
+			func=$( ps --pid "${num}" -o comm= )
+			kill "${num}"
+			wait "${num}"
+		 	;;
+		esac
+
 		echo -e "${orange}Canceled ${func}${nocolor}"
 	done
 	# delete tmp files
@@ -227,7 +238,7 @@ zenity_emerge() {
 	 	local title="Preparing for cleaning"
 	 	local options="--pulsate"
 	 	local slp=.5
-	 	local exFunc=( emerge )
+		local exFuncs=( emerge )
 	 	local exText="An error occurred while checking for obsolete packages, please check logs"
 	 	local exCode=5
 	 	;;
@@ -342,8 +353,10 @@ zenity_emerge() {
 			emerge --sync |& tee "${tmpFile["logs"]}"
 			res=$?
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
-				echo "Updating eix database"
-				eix-update
+				echo -e "${green}Updating eix database ...${nocolor}"
+				eix-update & pid=$!
+				exFuncs[ $(( ${#exFuncs[@]}-1 )) ]=$pid
+				wait $pid
 			fi
 			;;
 		 'check-depclean')
@@ -381,6 +394,7 @@ zenity_emerge() {
 		esac
 		echo $res > "${tmpFile["result"]}"
 	) &
+	exFuncs=( ${exFuncs[@]} $! )
 	sleep .5
 	dots=""
 		
@@ -480,7 +494,7 @@ zenity_emerge() {
 		 	;;
 		esac
 		
-	done | zenity --width ${WIDTH} --window-icon "${iconPath}" --progress --title "${title}" --text "" --auto-close ${options}
+	done | zenity --width ${WIDTH} --window-icon "${iconPath}" --cancel-label "Skip" --ok-label "Continue" --progress --title "${title}" --text "" --auto-close ${options}
 
 	# Aborted
 	if [ $? -gt 0 ]; then
@@ -538,20 +552,31 @@ zenity_upgrade () {
 	esac
 	
 	# First check
-	zenity_emerge --check${opt}
-	ret=$?
-	if [ $ret -gt 1 ]; then
-		return $(( $ret+10 ))
-	elif [ $ret -gt 0 ]; then
-		if [ "$ACTION" = "depclean" ] || [ "${UP:0:1}" = "@" ]; then
-		 	return 11
-		else
-		 	return 1
+	check=1
+	while [ $check ]; do
+		zenity_emerge --check${opt}
+		ret=$?
+		if [ $ret -gt 1 ]; then
+			return $(( $ret+10 ))
+		elif [ $ret -gt 0 ]; then
+			if [ "$ACTION" = "depclean" ] || [ "${UP:0:1}" = "@" ]; then
+			 	return 11
+			else
+			 	return 1
+			fi
 		fi
-	fi
-	
-	# nothing found
-	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
+		
+		# nothing found
+		[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
+		
+		# Error found
+		if grep '^!!!' "${tmpFile["logs"]}" &> /dev/null; then
+			sed '/./,$!d' "${tmpFile["logs"]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "Some configuration is necessary to proceed"
+			[ $? -gt 0 ] && prepare_for_exit && return 11
+			
+		else unset check		
+		fi
+	done
 	
 	local text="Uncheck packages you want to exclude.\n"
 	case $ACTION in
@@ -663,7 +688,7 @@ zenity_upgrade () {
 	choice=( $(
 		for i in ${!package[@]}; do
 			echo -e "${line[$i]}"
-		done | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
+		done | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --cancel-label "Skip" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
 	)
 	
 	ret=$?
@@ -728,6 +753,7 @@ zenity_upgrade () {
 }
 
 ########
+START OF SCRIPT
 
 # Initialisation
 SET='@world'
