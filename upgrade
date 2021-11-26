@@ -84,6 +84,18 @@ print_line () {
 	echo ${option} $( grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed 's/*//g' | sed "s/${remove}//" )
 }
 
+# Functions to remove starting and ending blank lines
+## USAGE : `cat [FILE] | remove_blanks` | `remove_blanks [FILE]`
+remove_blanks () {
+	rem_bl () {
+		tac | sed '/./,$!d' | tac | sed '/./,$!d'
+	}
+	if [ $# -gt 0 ]; then
+		cat "$1" | rem_bl
+	else rem_bl
+	fi
+}
+
 # Function to kill commands and delete tmp files
 ## USAGE: prepare_for_exit [command-to-kill] [...]
 prepare_for_exit () {
@@ -523,7 +535,7 @@ zenity_emerge() {
 		[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
 		
 		# print messages
-		sed -n "${start},${end}p" "${tmpFile["logs"]}" | sed 's/^ \* //' | tac | sed '/./,$!d' | tac | sed '/./,$!d' \
+		sed -n "${start},${end}p" "${tmpFile["logs"]}" | sed 's/^ \* //' | remove_blanks \
 		| zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title}"
 	done
 
@@ -571,7 +583,7 @@ zenity_upgrade () {
 		
 		# Error found
 		if grep '^!!!' "${tmpFile["logs"]}" &> /dev/null; then
-			sed '/./,$!d' "${tmpFile["logs"]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "Some configuration is necessary to proceed"
+			remove_blanks "${tmpFile["logs"]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "Some configuration is necessary to proceed"
 			[ $? -gt 0 ] && prepare_for_exit && return 11
 			
 		else unset check		
@@ -752,8 +764,7 @@ zenity_upgrade () {
 	return $ret
 }
 
-########
-START OF SCRIPT
+######## START OF SCRIPT
 
 # Initialisation
 SET='@world'

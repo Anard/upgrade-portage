@@ -1,6 +1,8 @@
 Graphical interface via zenity
 - skip pretend & use ask ?
 
+- progress bar still based on full upgrade when upgrading a part of packages
+
 - find messages about ebuilds blocked by conflict which don't appear with -q option
 
 - find better way to kill funcions started during zenity progress
