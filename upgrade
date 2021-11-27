@@ -639,10 +639,13 @@ zenity_upgrade () {
 
 	'upgrade')
 		local title="merged"
-		local messages=$( sed '/^\[ebuild/d' "${tmpFile["logs"]}" )
-		sed -i '/^\[ebuild/!d' "${tmpFile["logs"]}"
+		local messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
+		sed -i '/^\[/!d' "${tmpFile["logs"]}"
+		
 		# list of all packages that would be merged
-		local list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
+		unset nomerge
+		local nomerge_action=( $( sed '/^\[ebuild/d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d' ' -f1 ) )
+		local list=( $( sed '/^\[ebuild/!d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d] -f2 ) )
 		local number=${#list[@]}
 
 		# prepare output and ask for final choice
@@ -655,6 +658,20 @@ zenity_upgrade () {
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 			time_h[$i]=""
 		done
+		if [ ${#nomerge_action[@]} -gt 0 ]; then
+			if [ ${#nomerge_action[@]} -gt 1 ]; then
+				pron="Those"
+				plur="s"
+			else
+				pron="This"
+				plur=""
+			fi
+			text+="\n${pron} package${plur} won't be installed :\n"
+			for i in ${!nomerge_action[@]}; do
+				nomerge[$i]=$( sed '/^\[ebuild/d' "${tmpFile["logs"]}" | sed -n "$(( $i+1 ))p" | cut -d] -f2- )
+				text+="${nomerge_action[$i]} - ${nomerge[$i]}\n"
+			done
+		fi
 
 		# Build time estimation
 		local nb=0    #number of packages found
@@ -716,7 +733,7 @@ zenity_upgrade () {
 	choice=( $(
 		for i in ${!package[@]}; do
 			echo -e "${line[$i]}"
-		done | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --cancel-label "Skip" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
+		done | zenity --height ${HEIGHT} --window-icon "${iconPath}" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
 	)
 	
 	ret=$?
