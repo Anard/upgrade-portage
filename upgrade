@@ -334,9 +334,6 @@ zenity_emerge() {
 	 	 	 --exclude)
 	 	 	 	excluded="$2"
 	 	 		;;
-	 	 	 --average)
-	 	 	 	local avMergeEst=$2
-	 	 	 	;;
 	 	 	 *)
 	 	 	 	echo "Parametor error for function zenity_emerge"
 	 	 	 	exit 255
@@ -364,11 +361,9 @@ zenity_emerge() {
 		# total time
 		local total=0
 		for i in ${!packList[@]}; do
-			echo "${packList[$i]} : ${mergeEst[$i]}"
 			[ ${mergeEst[$i]} -eq 0 ] && add=$avg || add=${mergeEst[$i]}
 			total=$(( $total+$add ))
 		done
-		echo "total time : ${total}"
 		
 		# elapsed for calculating percentage & elapsed_h to print current package's merge time
 		local emerging=0; local installing=0
@@ -482,9 +477,9 @@ zenity_emerge() {
 					for cur_index in ${!packList[@]}; do
 						if [ "${packList[$cur_index]}" = "${cur_package}" ]; then
 							if [ $installing -eq $emerging ]; then
-								[ ${mergeEst[$cur_index]} -eq 0 ] && add=$(( 8*${avMergeEst}/10 )) || add=0
+								[ ${mergeEst[$cur_index]} -eq 0 ] && add=$(( 8*${avg}/10 )) || add=0
 							elif [ $installing -gt 0 ]; then
-								[ ${mergeEst[$last_index]} -eq 0 ] && add=$(( 2*${avMergeEst}/10 )) || add=${mergeEst[$last_index]}
+								[ ${mergeEst[$last_index]} -eq 0 ] && add=$(( 2*${avg}/10 )) || add=${mergeEst[$last_index]}
 								for i in ${!elapsed_h[@]}; do
 									elapsed_h[$i]=0
 								done
@@ -675,6 +670,7 @@ zenity_upgrade () {
 
 		# Build time estimation
 		local nb=0    #number of packages found
+		local totTime=0
 		if [ $ESTIMATE ]; then
 			# estimate each time
 			echo -e "${green}Estimating merge time...${nocolor}"
@@ -686,6 +682,7 @@ zenity_upgrade () {
 					echo "Unknown merge time for ${package[$i]}"
 				else
 					let nb+=1
+					let totTime+=${time[$i]}
 					declare -A time_hum
 					get_human_time time_hum ${time[$i]}
 					time_h[$i]=$( print_human_time time_hum )
@@ -698,7 +695,7 @@ zenity_upgrade () {
 		# total merge time
 		if [ $nb -eq ${#list[@]} ]; then
 			declare -A time_hum
-			get_human_time time_hum $avg
+			get_human_time time_hum $totTime
 			text+="Estimated merge time is `print_human_time time_hum`.\n"
 			unset time_hum
 		fi
