@@ -1,5 +1,5 @@
 #!/bin/bash
-version="1.04-r2"; script_name=`basename "$0"`
+version="1.04-r3"; script_name=`basename "$0"`
 # Script to sync && upgrade Gentoo portage
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
@@ -84,6 +84,18 @@ print_line () {
 	echo ${option} $( grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed 's/*//g' | sed "s/${remove}//" )
 }
 
+# Functions to remove starting and ending blank lines
+## USAGE : `cat [FILE] | remove_blanks` | `remove_blanks [FILE]`
+remove_blanks () {
+	rem_bl () {
+		tac | sed '/./,$!d' | tac | sed '/./,$!d'
+	}
+	if [ $# -gt 0 ]; then
+		cat "$1" | rem_bl
+	else rem_bl
+	fi
+}
+
 # Function to kill commands and delete tmp files
 ## USAGE: prepare_for_exit [command-to-kill] [...]
 prepare_for_exit () {
@@ -92,10 +104,25 @@ prepare_for_exit () {
 
 	# kill launched function
 	for func in "${functions[@]}"; do
-		pkill "${func}"
-		while pgrep "${func}" &> /dev/null; do
-			sleep .5
-		done
+		case ${func} in
+		 *[!0-9]*)
+			pkill "${func}"
+			while pgrep "${func}" &> /dev/null; do
+				sleep .1
+			done
+		 	;;
+		 *)
+			num=$func
+			func=$( ps --pid "${num}" -o comm= )
+			if [ $? -gt 0 ]; then
+				continue
+			else
+				kill "${num}"
+				wait "${num}"
+		 	fi
+		 	;;
+		esac
+
 		echo -e "${orange}Canceled ${func}${nocolor}"
 	done
 	# delete tmp files
@@ -227,7 +254,7 @@ zenity_emerge() {
 	 	local title="Preparing for cleaning"
 	 	local options="--pulsate"
 	 	local slp=.5
-	 	local exFunc=( emerge )
+		local exFuncs=( emerge )
 	 	local exText="An error occurred while checking for obsolete packages, please check logs"
 	 	local exCode=5
 	 	;;
@@ -307,9 +334,6 @@ zenity_emerge() {
 	 	 	 --exclude)
 	 	 	 	excluded="$2"
 	 	 		;;
-	 	 	 --average)
-	 	 	 	local avMergeEst=$2
-	 	 	 	;;
 	 	 	 *)
 	 	 	 	echo "Parametor error for function zenity_emerge"
 	 	 	 	exit 255
@@ -319,12 +343,28 @@ zenity_emerge() {
 	 		shift 2
 	 	done
 
+		# avg time
+		local avg=0; local nb=0
+		if [ $ESTIMATE ]; then
+			for i in ${!packList[@]}; do
+				if [ ${mergeEst[$i]} -gt 0 ]; then
+					let avg+=${mergeEst[$i]}
+					let nb+=1
+				fi
+			done
+		fi
+		if [ $nb -gt 0 ]; then
+			avg=$(( $avg/$nb ))
+		else avg=10
+		fi
+
 		# total time
 		local total=0
 		for i in ${!packList[@]}; do
 			[ ${mergeEst[$i]} -eq 0 ] && add=$avg || add=${mergeEst[$i]}
 			total=$(( $total+$add ))
 		done
+		
 		# elapsed for calculating percentage & elapsed_h to print current package's merge time
 		local emerging=0; local installing=0
 		local percent=0; local elapsed=0;
@@ -342,8 +382,10 @@ zenity_emerge() {
 			emerge --sync |& tee "${tmpFile["logs"]}"
 			res=$?
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
-				echo "Updating eix database"
-				eix-update
+				echo -e "${green}Updating eix database ...${nocolor}"
+				eix-update & pid=$!
+				exFuncs[ $(( ${#exFuncs[@]}-1 )) ]=$pid
+				wait $pid
 			fi
 			;;
 		 'check-depclean')
@@ -381,6 +423,7 @@ zenity_emerge() {
 		esac
 		echo $res > "${tmpFile["result"]}"
 	) &
+	exFuncs=( ${exFuncs[@]} $! )
 	sleep .5
 	dots=""
 		
@@ -434,9 +477,9 @@ zenity_emerge() {
 					for cur_index in ${!packList[@]}; do
 						if [ "${packList[$cur_index]}" = "${cur_package}" ]; then
 							if [ $installing -eq $emerging ]; then
-								[ ${mergeEst[$cur_index]} -eq 0 ] && add=$(( 8*${avMergeEst}/10 )) || add=0
+								[ ${mergeEst[$cur_index]} -eq 0 ] && add=$(( 8*${avg}/10 )) || add=0
 							elif [ $installing -gt 0 ]; then
-								[ ${mergeEst[$last_index]} -eq 0 ] && add=$(( 2*${avMergeEst}/10 )) || add=${mergeEst[$last_index]}
+								[ ${mergeEst[$last_index]} -eq 0 ] && add=$(( 2*${avg}/10 )) || add=${mergeEst[$last_index]}
 								for i in ${!elapsed_h[@]}; do
 									elapsed_h[$i]=0
 								done
@@ -480,7 +523,7 @@ zenity_emerge() {
 		 	;;
 		esac
 		
-	done | zenity --width ${WIDTH} --window-icon "${iconPath}" --progress --title "${title}" --text "" --auto-close ${options}
+	done | zenity --width ${WIDTH} --window-icon "${iconPath}" --cancel-label "Skip" --ok-label "Continue" --progress --title "${title}" --text "" --auto-close ${options}
 
 	# Aborted
 	if [ $? -gt 0 ]; then
@@ -509,7 +552,7 @@ zenity_emerge() {
 		[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
 		
 		# print messages
-		sed -n "${start},${end}p" "${tmpFile["logs"]}" | sed 's/^ \* //' | tac | sed '/./,$!d' | tac | sed '/./,$!d' \
+		sed -n "${start},${end}p" "${tmpFile["logs"]}" | sed 's/^ \* //' | remove_blanks \
 		| zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title}"
 	done
 
@@ -538,20 +581,33 @@ zenity_upgrade () {
 	esac
 	
 	# First check
-	zenity_emerge --check${opt}
-	ret=$?
-	if [ $ret -gt 1 ]; then
-		return $(( $ret+10 ))
-	elif [ $ret -gt 0 ]; then
-		if [ "$ACTION" = "depclean" ] || [ "${UP:0:1}" = "@" ]; then
-		 	return 11
-		else
-		 	return 1
+	check=1
+	while [ $check ]; do
+		zenity_emerge --check${opt}
+		ret=$?
+		if [ $ret -gt 1 ]; then
+			return $(( $ret+10 ))
+		elif [ $ret -gt 0 ]; then
+			if [ "$ACTION" = "depclean" ] || [ "${UP:0:1}" = "@" ]; then
+			 	return 11
+			else
+			 	return 1
+			fi
 		fi
-	fi
-	
-	# nothing found
-	[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
+		
+		# nothing found
+		[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
+		
+		if [ "$ACTION" = "depclean" ]; then
+			unset check
+		# Needs editing /etc/portage/
+		elif grep '^!!!' "${tmpFile["logs"]}" &> /dev/null; then
+			remove_blanks "${tmpFile["logs"]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "Some configuration is necessary to proceed"
+			[ $? -gt 0 ] && prepare_for_exit && return 11
+			
+		else unset check		
+		fi
+	done
 	
 	local text="Uncheck packages you want to exclude.\n"
 	case $ACTION in
@@ -580,8 +636,11 @@ zenity_upgrade () {
 		local title="merged"
 		local messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
 		sed -i '/^\[/!d' "${tmpFile["logs"]}"
+		
 		# list of all packages that would be merged
-		local list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
+		unset nomerge
+		local nomerge_action=( $( sed '/^\[ebuild/d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d' ' -f1 ) )
+		local list=( $( sed '/^\[ebuild/!d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d] -f2 ) )
 		local number=${#list[@]}
 
 		# prepare output and ask for final choice
@@ -594,43 +653,51 @@ zenity_upgrade () {
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 			time_h[$i]=""
 		done
+		if [ ${#nomerge_action[@]} -gt 0 ]; then
+			if [ ${#nomerge_action[@]} -gt 1 ]; then
+				pron="Those"
+				plur="s"
+			else
+				pron="This"
+				plur=""
+			fi
+			text+="\n${pron} package${plur} won't be installed :\n"
+			for i in ${!nomerge_action[@]}; do
+				nomerge[$i]=$( sed '/^\[ebuild/d' "${tmpFile["logs"]}" | sed -n "$(( $i+1 ))p" | cut -d] -f2- )
+				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge[$i]}\n"
+			done
+		fi
 
 		# Build time estimation
-		local avg=0   #average estimations
 		local nb=0    #number of packages found
+		local totTime=0
 		if [ $ESTIMATE ]; then
 			# estimate each time
 			echo -e "${green}Estimating merge time...${nocolor}"
 			for i in ${!list[@]}; do
 				time[$i]=$( get_av_merge "${package[$i]}" )
 				if [ -z ${time[$i]} ]; then
-					echo "Unknown merge time for ${package[$i]}"
 					time[$i]=0
 					time_h[$i]='??:??'
+					echo "Unknown merge time for ${package[$i]}"
 				else
-					avg=$(( $avg+${time[$i]} ))
-					nb=$(( $nb+1 ))
-
+					let nb+=1
+					let totTime+=${time[$i]}
 					declare -A time_hum
 					get_human_time time_hum ${time[$i]}
 					time_h[$i]=$( print_human_time time_hum )
 					unset time_hum
-					
 					echo "Average merge time for ${package[$i]} is ${time_h[$i]}"
 				fi
 			done
 		fi
 
-		# final average time
-		if [ $nb -gt 0 ]; then
-			if [ $nb -eq ${#list[@]} ]; then
-				declare -A time_hum
-				get_human_time time_hum $avg
-				text+="Estimated merge time is `print_human_time time_hum`.\n"
-				unset time_hum
-			fi
-			avg=$(( $avg/$nb ))
-		else avg=10
+		# total merge time
+		if [ $nb -eq ${#list[@]} ]; then
+			declare -A time_hum
+			get_human_time time_hum $totTime
+			text+="Estimated merge time is `print_human_time time_hum`.\n"
+			unset time_hum
 		fi
 		
 		local options="--column package --column action --column version --column current --column time"
@@ -701,7 +768,7 @@ zenity_upgrade () {
 	 	options="--depclean"
 	 	;;
 	 'upgrade')
-	 	options="${UP} --choice choice --time time --average $avg"
+	 	options="${UP} --choice choice --time time"
 	 	;;
 	esac
 	
@@ -727,7 +794,7 @@ zenity_upgrade () {
 	return $ret
 }
 
-########
+######## START OF SCRIPT
 
 # Initialisation
 SET='@world'

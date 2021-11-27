@@ -6,6 +6,7 @@ Use `sudo upgrade` to upgrade your system or `upgrade --help` for help
 `-x` option (or desktop file) provides a gtk interactive script via zenity
 
 If launched from desktop file, last script's stdout is recorded in ~/.upgrade-portage/upgrade.log
+You can follow script log while typing `tail -f ~/.upgrade-portage/upgradelog` in a terminal
 
 ## Installation
 Prefered way is to use [overlay](https://github.com/Anard/anard-overlay) and emerge it :
