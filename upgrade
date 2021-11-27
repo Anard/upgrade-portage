@@ -1,5 +1,5 @@
 #!/bin/bash
-version="1.04-r3"; script_name=`basename "$0"`
+version="1.04-r4"; script_name=`basename "$0"`
 # Script to sync && upgrade Gentoo portage
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
