@@ -639,8 +639,8 @@ zenity_upgrade () {
 
 	'upgrade')
 		local title="merged"
-		local messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
-		sed -i '/^\[/!d' "${tmpFile["logs"]}"
+		local messages=$( sed '/^\[ebuild/d' "${tmpFile["logs"]}" )
+		sed -i '/^\[ebuild/!d' "${tmpFile["logs"]}"
 		# list of all packages that would be merged
 		local list=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f2 ) )
 		local number=${#list[@]}
