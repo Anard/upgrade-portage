@@ -114,8 +114,12 @@ prepare_for_exit () {
 		 *)
 			num=$func
 			func=$( ps --pid "${num}" -o comm= )
-			kill "${num}"
-			wait "${num}"
+			if [ $? -gt 0 ]; then
+				continue
+			else
+				kill "${num}"
+				wait "${num}"
+		 	fi
 		 	;;
 		esac
 
@@ -342,12 +346,30 @@ zenity_emerge() {
 	 		shift 2
 	 	done
 
+		# avg time
+		local avg=0; local nb=0
+		if [ $ESTIMATE ]; then
+			for i in ${!packList[@]}; do
+				if [ ${mergeEst[$i]} -gt 0 ]; then
+					let avg+=${mergeEst[$i]}
+					let nb+=1
+				fi
+			done
+		fi
+		if [ $nb -gt 0 ]; then
+			avg=$(( $avg/$nb ))
+		else avg=10
+		fi
+
 		# total time
 		local total=0
 		for i in ${!packList[@]}; do
+			echo "${packList[$i]} : ${mergeEst[$i]}"
 			[ ${mergeEst[$i]} -eq 0 ] && add=$avg || add=${mergeEst[$i]}
 			total=$(( $total+$add ))
 		done
+		echo "total time : ${total}"
+		
 		# elapsed for calculating percentage & elapsed_h to print current package's merge time
 		local emerging=0; local installing=0
 		local percent=0; local elapsed=0;
@@ -581,8 +603,10 @@ zenity_upgrade () {
 		# nothing found
 		[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
 		
-		# Error found
-		if grep '^!!!' "${tmpFile["logs"]}" &> /dev/null; then
+		if [ "$ACTION" = "depclean" ]; then
+			unset check
+		# Needs editing /etc/portage/
+		elif grep '^!!!' "${tmpFile["logs"]}" &> /dev/null; then
 			remove_blanks "${tmpFile["logs"]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "Some configuration is necessary to proceed"
 			[ $? -gt 0 ] && prepare_for_exit && return 11
 			
@@ -633,7 +657,6 @@ zenity_upgrade () {
 		done
 
 		# Build time estimation
-		local avg=0   #average estimations
 		local nb=0    #number of packages found
 		if [ $ESTIMATE ]; then
 			# estimate each time
@@ -641,33 +664,26 @@ zenity_upgrade () {
 			for i in ${!list[@]}; do
 				time[$i]=$( get_av_merge "${package[$i]}" )
 				if [ -z ${time[$i]} ]; then
-					echo "Unknown merge time for ${package[$i]}"
 					time[$i]=0
 					time_h[$i]='??:??'
+					echo "Unknown merge time for ${package[$i]}"
 				else
-					avg=$(( $avg+${time[$i]} ))
-					nb=$(( $nb+1 ))
-
+					let nb+=1
 					declare -A time_hum
 					get_human_time time_hum ${time[$i]}
 					time_h[$i]=$( print_human_time time_hum )
 					unset time_hum
-					
 					echo "Average merge time for ${package[$i]} is ${time_h[$i]}"
 				fi
 			done
 		fi
 
-		# final average time
-		if [ $nb -gt 0 ]; then
-			if [ $nb -eq ${#list[@]} ]; then
-				declare -A time_hum
-				get_human_time time_hum $avg
-				text+="Estimated merge time is `print_human_time time_hum`.\n"
-				unset time_hum
-			fi
-			avg=$(( $avg/$nb ))
-		else avg=10
+		# total merge time
+		if [ $nb -eq ${#list[@]} ]; then
+			declare -A time_hum
+			get_human_time time_hum $avg
+			text+="Estimated merge time is `print_human_time time_hum`.\n"
+			unset time_hum
 		fi
 		
 		local options="--column package --column action --column version --column current --column time"
@@ -738,7 +754,7 @@ zenity_upgrade () {
 	 	options="--depclean"
 	 	;;
 	 'upgrade')
-	 	options="${UP} --choice choice --time time --average $avg"
+	 	options="${UP} --choice choice --time time"
 	 	;;
 	esac
 	
