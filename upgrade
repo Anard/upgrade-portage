@@ -669,7 +669,7 @@ zenity_upgrade () {
 			text+="\n${pron} package${plur} won't be installed :\n"
 			for i in ${!nomerge_action[@]}; do
 				nomerge[$i]=$( sed '/^\[ebuild/d' "${tmpFile["logs"]}" | sed -n "$(( $i+1 ))p" | cut -d] -f2- )
-				text+="${nomerge_action[$i]} - ${nomerge[$i]}\n"
+				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge[$i]}\n"
 			done
 		fi
 
@@ -733,7 +733,7 @@ zenity_upgrade () {
 	choice=( $(
 		for i in ${!package[@]}; do
 			echo -e "${line[$i]}"
-		done | zenity --height ${HEIGHT} --window-icon "${iconPath}" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
+		done | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
 	)
 	
 	ret=$?
