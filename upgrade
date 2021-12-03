@@ -1,6 +1,10 @@
 #!/bin/bash
-version="1.04-r4"; script_name=`basename "$0"`
 # Script to sync && upgrade Gentoo portage
+version="1.04-r4"; script_name=`basename "$0"`
+
+TEXTDOMAINDIR=/home/anard/Applications/upgrade-portage/locale   # probably not the best place for these files, but OK for testing
+TEXTDOMAIN=upgrade
+
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
 	source "${configPath}/shell-text.cnf"
@@ -10,7 +14,7 @@ if [ ! -f "${iconPath}" ]; then
 	iconPath="`dirname \"$0\"`/upgrade-portage.png"
 fi
 worldFile="/var/lib/portage/world"
-declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['result']="/tmp/zenity-result" )
+declare -A tmpFile=( [logs]="/tmp/upgrade-portage.log" [result]="/tmp/zenity-result" )
 WIDTH=500
 HEIGHT=300
 
@@ -52,14 +56,20 @@ set_param () {
 	return 0
 }
 
+# Function to print translated messages
+## USAGE : print_message MESSAGE
+print_message () {
+	eval echo $( echo "$@" | sed "s/\*\([^*]*\)\*/$\{\1\}/g" )
+}
+
 # Function to get last log line
 get_line () {
 	if [ $# -gt 0 ]; then
-		grep "$1" "${tmpFile["logs"]}" | sed -n '$p'
+		grep "$1" "${tmpFile[logs]}" | sed -n '$p'
 	else
-		grep -v "^$" "${tmpFile["logs"]}" | sed -n '$p'
+		grep -v "^$" "${tmpFile[logs]}" | sed -n '$p'
 	fi
-#	tail -1 "${tmpFile["logs"]}"
+#	tail -1 "${tmpFile[logs]}"
 }
 
 # Function to print log line in zenity
@@ -83,7 +93,7 @@ print_line () {
 		shift
 	done
 
-	echo ${option} $( grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed 's/*//g' | sed "s/${remove}//" )
+	echo ${option} $( grep -v "^$" "${tmpFile[logs]}" | sed -n '$ s/^/# /p' | sed 's/*//g' | sed "s/${remove}//" )
 }
 
 # Functions to remove starting and ending blank lines
@@ -125,7 +135,7 @@ prepare_for_exit () {
 		 	;;
 		esac
 
-		echo -e "${orange}${_prepare_for_exit['canceled']}${nocolor}"
+		echo -e "${orange}$( print_message ${_prepare_for_exit[canceled]} )${nocolor}"
 	done
 	# delete tmp files
 	for file in ${tmpFile[@]}; do
@@ -139,7 +149,7 @@ prepare_for_exit () {
 ## array must have been declared via -A option and have name different than 'array'
 get_human_time () {
 	if [ $# -eq 0 ]; then
-		echo "${_generic['invalid-call']}"
+		echo "$( print_message ${_generic[invalid-call]} )"
 		return 1
 	fi
 				
@@ -150,7 +160,7 @@ get_human_time () {
 	fi
 	
 	if [ $# -lt 2 ]; then
-		echo "${_generic['invalid-parameter']}"
+		echo "$( print_message ${_generic[invalid-parameter]} )"
 		return 1
 	fi
 	
@@ -158,32 +168,32 @@ get_human_time () {
 	if [ $incr ]; then
 		case 0 in
 		 $(( $2%86400 )) )
-			array["d"]=$(( ${array["d"]}+1 ))
-			array["h"]=0
-			array["m"]=0
-			array["s"]=0
+			array[d]=$(( ${array[d]}+1 ))
+			array[h]=0
+			array[m]=0
+			array[s]=0
 			;;
 		 $(( $2%3600 )) )
-			array["h"]=$(( ${array["h"]}+1 ))
-			array["m"]=0
-			array["s"]=0
+			array[h]=$(( ${array[h]}+1 ))
+			array[m]=0
+			array[s]=0
 			;;
 		 $(( $2%60 )) )
-			array["m"]=$(( ${array["m"]}+1 ))
-			array["s"]=0
+			array[m]=$(( ${array[m]}+1 ))
+			array[s]=0
 			;;
 		 *)
-			array["s"]=$(( ${array["s"]}+1 ))
+			array[s]=$(( ${array[s]}+1 ))
 			;;
 		esac
 	else
 		local machine=$2
-		array["d"]=$(( $machine/86400 ))
+		array[d]=$(( $machine/86400 ))
 		machine=$(( $machine%86400 ))
-		array["h"]=$(( $machine/3600 ))
+		array[h]=$(( $machine/3600 ))
 		machine=$(( $machine%3600 ))
-		array["m"]=$(( $machine/60 ))
-		array["s"]=$(( $machine%60 ))
+		array[m]=$(( $machine/60 ))
+		array[s]=$(( $machine%60 ))
 	fi
 	return 0
 }
@@ -192,16 +202,16 @@ get_human_time () {
 ## USAGE: print_human_time human_time
 print_human_time () {
 	if [ ! $# -eq 1 ] || [ $1 -eq $1 ] &>/dev/null; then
-		echo "${_generic['invalid-parameter']}"
+		echo "$( print_message ${_generic[invalid-parameter]} )"
 		return 1
 	fi
 	
 	declare -n array=$1
 	local return_str=""
-	[ ${array["d"]} -gt 0 ] && return_str="${return_str}${array["d"]} days "
-	[ ${array["d"]} -gt 0 ] || [ ${array["h"]} -gt 0 ] && return_str="${return_str}${array["h"]}:"
-	[ ${array["m"]} -gt 9 ] && return_str="${return_str}${array["m"]}:" || return_str="${return_str}0${array["m"]}:"
-	[ ${array["s"]} -gt 9 ] && return_str="${return_str}${array["s"]}" || return_str="${return_str}0${array["s"]}"
+	[ ${array[d]} -gt 0 ] && return_str="${return_str}${array[d]} days "
+	[ ${array[d]} -gt 0 ] || [ ${array[h]} -gt 0 ] && return_str="${return_str}${array[h]}:"
+	[ ${array[m]} -gt 9 ] && return_str="${return_str}${array[m]}:" || return_str="${return_str}0${array[m]}:"
+	[ ${array[s]} -gt 9 ] && return_str="${return_str}${array[s]}" || return_str="${return_str}0${array[s]}"
 	echo $return_str
 	return 0
 }
@@ -245,25 +255,25 @@ zenity_emerge() {
 	 -s|--sync)
 	 	local ACTION='sync'
 	 	local options="--pulsate"
-	 	local title="${_zenity_emerge['sync-title']}"
+	 	local title=$( gettext "Syncing repositories" )
 	 	local slp=.5
 	 	local exFuncs=( rsync emerge )
-	 	local exText="${_zenity_emerge['sync-error']}"
+	 	local exText="$( print_message ${_zenity_emerge[sync-error]} )"
 	 	local exCode=2
 	 	;;
 	 -C|--check-depclean)
 	 	local ACTION='check-depclean'
-	 	local title="${_zenity_emerge['checkdep-title']}"
+	 	local title="$( print_message ${_zenity_emerge[checkdep-title]} )"
 	 	local options="--pulsate"
 	 	local slp=.5
 		local exFuncs=( emerge )
-	 	local exText="${_zenity_emerge['checkdep-error']}"
+	 	local exText="$( print_message ${_zenity_emerge[checkdep-error]} )"
 	 	local exCode=5
 	 	;;
 	 -c|--depclean)
 	 	shift
 	 	local ACTION='depclean'
-	 	local title="${_zenity_emerge['depclean-title']}"
+	 	local title="$( print_message ${_zenity_emerge[depclean-title]} )"
 	 	local slp=.5
 	 	local shift
 	 	local options=""; excluded=""
@@ -273,7 +283,7 @@ zenity_emerge() {
 	 	 	 	local excluded="$2"
 	 	 		;;
 	 	 	 *)
-	 	 	 	echo "${_generic['invalid-param']}"
+	 	 	 	echo "$( print_message ${_generic[invalid-param]} )"
 	 	 	 	exit 255
 	 	 	 	;;
 	 	 	esac
@@ -284,7 +294,7 @@ zenity_emerge() {
 	 	local cleaning=0
 	 	local percent=0
 	 	local exFuncs=( emerge )
-	 	local exText="${_zenity_emerge['depclean-error']}"
+	 	local exText="$( print_message ${_zenity_emerge[depclean-error]} )"
 	 	local exCode=6
 		;;
 	 -k|--check)
@@ -293,16 +303,16 @@ zenity_emerge() {
 	 	local UP=$2
 		case $UP in
 		 @*)
-		 	title="${_zenity_emerge['check-title1']}"
+		 	title=$"Checking for upgrades ${UP}"
 		 	;;
 		 *)
-		 	title="${_zenity_emerge['check-title2']}"
+		 	title="$( print_message ${_zenity_emerge[check-title2]} )"
 		 	;;
 		esac
 		local options="--pulsate"
 		local slp=.5
 	 	local exFuncs=( emerge )
-	 	local exText="${_zenity_emerge['check-error']}"
+	 	local exText="$( print_message ${_zenity_emerge[check-error]} )"
 	 	local exCode=3
 	 	;;
 	 	
@@ -312,14 +322,14 @@ zenity_emerge() {
 	 	local UP=$1
 		case $UP in
 		 "@world")
-			local title="${_zenity_emerge['upgrade-title1']}"
+			local title="$( print_message ${_zenity_emerge[upgrade-title1]} )"
 			;;
 		 @*)
-			local title="${_zenity_emerge['upgrade-title2']}"
+			local title="$( print_message ${_zenity_emerge[upgrade-title2]} )"
 			;;
 		 *)
 		 	local pack=${UP#*/}
-		 	local title="${_zenity_emerge['upgrade-title1']}"
+		 	local title="$( print_message ${_zenity_emerge[upgrade-title1]} )"
 			;;
 		esac
 		local slp=1
@@ -337,7 +347,7 @@ zenity_emerge() {
 	 	 	 	excluded="$2"
 	 	 		;;
 	 	 	 *)
-	 	 	 	echo "${_generic['invalid-param']}"
+	 	 	 	echo "$( print_message ${_generic[invalid-param]} )"
 	 	 	 	exit 255
 	 	 	 	;;
 	 		esac
@@ -370,9 +380,9 @@ zenity_emerge() {
 		# elapsed for calculating percentage & elapsed_h to print current package's merge time
 		local emerging=0; local installing=0
 		local percent=0; local elapsed=0;
-		declare -A elapsed_h=( ['machine']=0 ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
+		declare -A elapsed_h=( [machine]=0 [d]=0 [h]=0 [m]=0 [s]=0 )
 	 	local exFuncs=( emerge )
-	 	local exText="${_zenity_emerge['upgrade-error']}"
+	 	local exText="$( print_message ${_zenity_emerge[upgrade-error]} )"
 	 	local exCode=4
 		;;
 	esac
@@ -384,7 +394,7 @@ zenity_emerge() {
 			emerge --sync |& tee "${tmpFile["logs"]}"
 			res=$?
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
-				echo -e "${green}${_zenity_emerge['eix-message']} ...${nocolor}"
+				echo -e "${green}$( print_message ${_zenity_emerge['eix-message']} ) ...${nocolor}"
 				eix-update & pid=$!
 				exFuncs[ $(( ${#exFuncs[@]}-1 )) ]=$pid
 				wait $pid
@@ -435,12 +445,12 @@ zenity_emerge() {
 		case $ACTION in
 		 'sync')
 		 	if pgrep eix-update &>/dev/null; then
-		 		echo "# ${_zenity_emerge['eix-message']}"
+		 		echo "# $( print_message ${_zenity_emerge['eix-message']} )"
 		 	else print_line
 		 	fi
 		 	;;
 		 'check-depclean')
-		 	echo "# ${_zenity_emerge['checkdep-message']} ${dots}"
+		 	echo "# $( print_message ${_zenity_emerge['checkdep-message']} ) ${dots}"
 		 	[ "$dots" = "..." ] && dots="" || dots="${dots}."
 		 	;;
 		 	
@@ -457,7 +467,7 @@ zenity_emerge() {
 		 	;;
 		 	
 		 'check')
-		 	echo "# ${_zenity_emerge['check-message']} ${dots}"
+		 	echo "# $( print_message ${_zenity_emerge['check-message']} ) ${dots}"
 		 	[ "$dots" = "..." ] && dots="" || dots="${dots}."
 		 	;;
 		 	
@@ -516,7 +526,7 @@ zenity_emerge() {
 				else echo " - ${print}"
 				fi
 			else
-				echo "# ${_zenity_emerge['check-message']} ${dots}"
+				echo "# $( print_message ${_zenity_emerge['check-message']} ) ${dots}"
 				[ "$dots" = "..." ] && dots="" || dots="${dots}."
 			fi
 			
@@ -547,7 +557,7 @@ zenity_emerge() {
 			;;
 		 *)
 			package=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${tmpFile["logs"]}" )
-			title="${_zenity_emerge['package-title']}"
+			title="$( print_message ${_zenity_emerge['package-title']} )"
 			start=$(( ${message[$i]}+1 ))
 			;;
 		esac
@@ -603,15 +613,15 @@ zenity_upgrade () {
 		if [ "$ACTION" = "depclean" ]; then
 			unset check
 		# Needs editing /etc/portage/
-		elif grep '^!!!' "${tmpFile["logs"]}" &> /dev/null; then
-			remove_blanks "${tmpFile["logs"]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${_zenity_upgrade['conf-needed']}"
+		elif grep -q '^!!!' "${tmpFile["logs"]}"; then
+			remove_blanks "${tmpFile["logs"]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "$( print_message ${_zenity_upgrade['conf-needed']} )"
 			[ $? -gt 0 ] && prepare_for_exit && return 11
 			
 		else unset check		
 		fi
 	done
 	
-	local text="${_zenity_upgrade['uncheck-message']}\n"
+	local text="$( print_message ${_zenity_upgrade['uncheck-message']} )\n"
 	case $ACTION in
 	 'depclean')
 		local title="unmerged"
@@ -651,7 +661,7 @@ zenity_upgrade () {
 			package[$i]=${list[$i]%-[0-9]*}
 			version[$i]=${list[$i]#${package[$i]}-}
 			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
-			grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
+			grep -q ${package[$i]} ${worldFile} && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 			time_h[$i]=""
 		done
@@ -660,7 +670,7 @@ zenity_upgrade () {
 			text+="\n${_zenity_upgrade['not-installed']}\n"
 			for i in ${!nomerge_action[@]}; do
 				nomerge[$i]=$( sed '/^\[ebuild/d' "${tmpFile["logs"]}" | sed -n "$(( $i+1 ))p" | cut -d] -f2- )
-				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge[$i]}\n"
+				text+="<span color=\"brown\">$( print_message ${nomerge_action[$i]} )</span> : ${nomerge[$i]}\n"
 			done
 		fi
 
@@ -669,13 +679,13 @@ zenity_upgrade () {
 		local totTime=0
 		if [ $ESTIMATE ]; then
 			# estimate each time
-			echo -e "${green}${_zenity_upgrade['est-merge']}...${nocolor}"
+			echo -e "${green}$( print_message ${_zenity_upgrade['est-merge']} )...${nocolor}"
 			for i in ${!list[@]}; do
 				time[$i]=$( get_av_merge "${package[$i]}" )
 				if [ -z ${time[$i]} ]; then
 					time[$i]=0
 					time_h[$i]='??:??'
-					echo "${_zenity_upgrade['est-not-found']}"
+					echo "$( print_message ${_zenity_upgrade['est-not-found']} )"
 				else
 					let nb+=1
 					let totTime+=${time[$i]}
@@ -683,7 +693,7 @@ zenity_upgrade () {
 					get_human_time time_hum ${time[$i]}
 					time_h[$i]=$( print_human_time time_hum )
 					unset time_hum
-					echo "${_zenity_upgrade['est-found']}"
+					echo "$( print_message ${_zenity_upgrade['est-found']} )"
 				fi
 			done
 		fi
@@ -692,7 +702,7 @@ zenity_upgrade () {
 		if [ $nb -eq ${#list[@]} ]; then
 			declare -A time_hum
 			get_human_time time_hum $totTime
-			text+="${_zenity_upgrade['est-total'] `print_human_time time_hum`.\n"
+			text+="$( print_message ${_zenity_upgrade['est-total']} ) $( print_human_time time_hum ).\n"
 			unset time_hum
 		fi
 		
@@ -705,7 +715,7 @@ zenity_upgrade () {
 			aborted=1
 			;;
 		 *)
-		 	text="${_zenity_upgrade['package-message']}\n"
+		 	text="$( print_message ${_zenity_upgrade['package-message']} )\n"
 		 	check=""
 			[ $ESTIMATE ] || options+=" --hide-column 5"		 	
 			aborted=11
@@ -720,8 +730,8 @@ zenity_upgrade () {
 		;;
 	esac	
 	
-	[ $number -gt 1 ] && plur="s" || plur=""
-	[ $ACTION = 'upgrade' ] && title="${_zenity_upgrade['merge-title']}" || title="${_zenity_upgrade['unmerge-title']}"
+	[ $number -gt 1 ] && plur="${_generic["pluriel"]}" || plur=""
+	[ $ACTION = 'upgrade' ] && title="$( print_message ${_zenity_upgrade['merge-title']} )" || title="$( print_message ${_zenity_upgrade['unmerge-title']} )"
 	
 	choice=( $(
 		for i in ${!package[@]}; do
@@ -734,7 +744,7 @@ zenity_upgrade () {
 		[ "${UP:0:1}" = '@' ] || choice=( ${package[@]} )
 	fi
 	if [ "$ret" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
-		echo -e "${orange}${_generic['abort']}${nocolor}"
+		echo -e "${orange}$( print_message ${_generic['abort']} )${nocolor}"
 		prepare_for_exit
 		if [ "$ACTION" = "upgrade" ] && [ "${UP:0:1}" = '@' ]; then
 			return 11
@@ -778,7 +788,7 @@ zenity_upgrade () {
 		fi
 		;;
 	 'upgrade')
-		if grep "!!! existing preserved libs found" "${tmpFile["logs"]}" &> /dev/null; then
+		if grep -q "!!! existing preserved libs found" "${tmpFile["logs"]}"; then
 			ret=3
 		elif [ ! -z "${exclude}" ] || [ ! "${UP}" = "@world" ]; then
 			ret=2
