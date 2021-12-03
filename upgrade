@@ -391,8 +391,8 @@ zenity_emerge() {
 			emerge --sync |& tee "${tmpFile["logs"]}"
 			res=$?
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
-				local eix-mess=$"Updating eix database"
-				echo -e "${green}${eix-mess} ...${nocolor}"
+				local eix_mess=$"Updating eix database"
+				echo -e "${green}${eix_mess} ...${nocolor}"
 				eix-update & pid=$!
 				exFuncs[ $(( ${#exFuncs[@]}-1 )) ]=$pid
 				wait $pid
@@ -890,13 +890,14 @@ for i in "${!repos[@]}"; do
 	if [ -f "${repos[$i]}/metadata/timestamp.chk" ]; then
 		timestamp=$( cat "${repos[$i]}/metadata/timestamp.chk" )
 		time[$i]=$( date -d "${timestamp}" "+%s" )
-		text="Last sync for ${repos[$i]##*/} is `date -d @${time[$i]}`"
+		text=$"Last sync for ${repos[$i]##*/} is "
+		text+="`date -d @${time[$i]}`"
 		[ ! $QUIET ] || [ $VERBOSE ] && echo "${text}"
 
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
 			text1=$"Sync date for ${repos[$i]##*/} is newer than now"
 			text2=$", please correct your local time"
-			[ ! $GTK ] && echo -e "${red}${text1}${nocolor}${text2}" || zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
+			[ ! $GTK ] && echo -e "${red}${text1}${nocolor}${text2}" || zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title $"Time error" --text "<span color=\"red\">${text1}</span>${text2}"
 			echo $"Exiting..."
 			exit 1
 		fi
@@ -931,17 +932,18 @@ if [ $now -lt $last ]; then
 		fi
 	else
 		echo "${bold}${text1}${normal}. ${text2} ${answers}"
+		
 		while true;	do
 
 			read -p "${text3}" ans
 
 			case "$ans" in
-				[nN]*|'')
+				${answerko}|${answerko^}|'')
 					set_param 'sync' 0
 					break 2
 					;;
 
-				[yY]*)
+				${answerok}|${answerok^})
 					break 2
 					;;
 
