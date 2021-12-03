@@ -19,8 +19,6 @@ declare -A tmpFile=( [logs]="/tmp/upgrade-portage.log" [result]="/tmp/zenity-res
 WIDTH=500
 HEIGHT=300
 
-source "./texts/en"
-
 ###### FUNCTIONS
 set_param () {
 	case "$1" in
