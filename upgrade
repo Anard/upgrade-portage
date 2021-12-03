@@ -2,9 +2,9 @@
 # Script to sync && upgrade Gentoo portage
 version="1.04-r4"; script_name=`basename "$0"`
 
-TEXTDOMAIN=upgrade
-#TEXTDOMAINDIR=/usr/share/locale
-TEXTDOMAINDIR=/home/anard/Applications/upgrade-portage/locale   # for testing
+TEXTDOMAIN=upgrade-portage
+TEXTDOMAINDIR=/usr/share/locale
+#TEXTDOMAINDIR=/home/anard/Applications/upgrade-portage/locale   # for testing
 
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
