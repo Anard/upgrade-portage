@@ -22,3 +22,8 @@ portage
 zenity
 an askpass program for sudo to use .desktop file
 ```
+
+## Translating
+To translate to another language, copy the locale/en.po file and rename it to your locale, keeping the .po extension.
+
+Translate messages (msgid) in msgstr lines. Always keep special caracters as $, [, ], etc.
