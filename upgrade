@@ -1,6 +1,10 @@
 #!/bin/bash
-version="1.04-r3"; script_name=`basename "$0"`
 # Script to sync && upgrade Gentoo portage
+version="1.04-r4"; script_name=`basename "$0"`
+
+TEXTDOMAIN=upgrade-portage
+TEXTDOMAINDIR=/usr/share/locale
+
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
 	source "${configPath}/shell-text.cnf"
@@ -10,7 +14,7 @@ if [ ! -f "${iconPath}" ]; then
 	iconPath="`dirname \"$0\"`/upgrade-portage.png"
 fi
 worldFile="/var/lib/portage/world"
-declare -A tmpFile=( ['logs']="/tmp/upgrade-portage.log" ['result']="/tmp/zenity-result" )
+declare -A tmpFile=( [logs]="/tmp/upgrade-portage.log" [result]="/tmp/zenity-result" )
 WIDTH=500
 HEIGHT=300
 
@@ -43,7 +47,8 @@ set_param () {
 	 	;;
 
 	 *)
-		echo -e "${red}An error occurred while setting parameters${nocolor}"
+	 	local mess=$"An error occurred while setting parameters"
+		echo -e "${red}${mess}${nocolor}"
 		return 1
 		;;
 	esac
@@ -53,11 +58,11 @@ set_param () {
 # Function to get last log line
 get_line () {
 	if [ $# -gt 0 ]; then
-		grep "$1" "${tmpFile["logs"]}" | sed -n '$p'
+		grep "$1" "${tmpFile[logs]}" | sed -n '$p'
 	else
-		grep -v "^$" "${tmpFile["logs"]}" | sed -n '$p'
+		grep -v "^$" "${tmpFile[logs]}" | sed -n '$p'
 	fi
-#	tail -1 "${tmpFile["logs"]}"
+#	tail -1 "${tmpFile[logs]}"
 }
 
 # Function to print log line in zenity
@@ -81,7 +86,7 @@ print_line () {
 		shift
 	done
 
-	echo ${option} $( grep -v "^$" "${tmpFile["logs"]}" | sed -n '$ s/^/# /p' | sed 's/*//g' | sed "s/${remove}//" )
+	echo ${option} $( grep -v "^$" "${tmpFile[logs]}" | sed -n '$ s/^/# /p' | sed 's/*//g' | sed "s/${remove}//" )
 }
 
 # Functions to remove starting and ending blank lines
@@ -123,7 +128,8 @@ prepare_for_exit () {
 		 	;;
 		esac
 
-		echo -e "${orange}Canceled ${func}${nocolor}"
+		local mess=$"Cancelled ${func}"
+		echo -e "${orange}${mess}${nocolor}"
 	done
 	# delete tmp files
 	for file in ${tmpFile[@]}; do
@@ -137,7 +143,7 @@ prepare_for_exit () {
 ## array must have been declared via -A option and have name different than 'array'
 get_human_time () {
 	if [ $# -eq 0 ]; then
-		echo "Invalid call to function get_human_time"
+		echo $"Invalid call to function ${FUNCNAME[0]}"
 		return 1
 	fi
 				
@@ -148,7 +154,7 @@ get_human_time () {
 	fi
 	
 	if [ $# -lt 2 ]; then
-		echo "Invalid parameter $1 for function get_human_time"
+		echo $"Invalid parameter $1 for function ${FUNCNAME[0]}"
 		return 1
 	fi
 	
@@ -156,32 +162,32 @@ get_human_time () {
 	if [ $incr ]; then
 		case 0 in
 		 $(( $2%86400 )) )
-			array["d"]=$(( ${array["d"]}+1 ))
-			array["h"]=0
-			array["m"]=0
-			array["s"]=0
+			array[d]=$(( ${array[d]}+1 ))
+			array[h]=0
+			array[m]=0
+			array[s]=0
 			;;
 		 $(( $2%3600 )) )
-			array["h"]=$(( ${array["h"]}+1 ))
-			array["m"]=0
-			array["s"]=0
+			array[h]=$(( ${array[h]}+1 ))
+			array[m]=0
+			array[s]=0
 			;;
 		 $(( $2%60 )) )
-			array["m"]=$(( ${array["m"]}+1 ))
-			array["s"]=0
+			array[m]=$(( ${array[m]}+1 ))
+			array[s]=0
 			;;
 		 *)
-			array["s"]=$(( ${array["s"]}+1 ))
+			array[s]=$(( ${array[s]}+1 ))
 			;;
 		esac
 	else
 		local machine=$2
-		array["d"]=$(( $machine/86400 ))
+		array[d]=$(( $machine/86400 ))
 		machine=$(( $machine%86400 ))
-		array["h"]=$(( $machine/3600 ))
+		array[h]=$(( $machine/3600 ))
 		machine=$(( $machine%3600 ))
-		array["m"]=$(( $machine/60 ))
-		array["s"]=$(( $machine%60 ))
+		array[m]=$(( $machine/60 ))
+		array[s]=$(( $machine%60 ))
 	fi
 	return 0
 }
@@ -190,16 +196,16 @@ get_human_time () {
 ## USAGE: print_human_time human_time
 print_human_time () {
 	if [ ! $# -eq 1 ] || [ $1 -eq $1 ] &>/dev/null; then
-		echo "Invalid parameter for function print_human_time"
+		echo $"Invalid parameter for function ${FUNCNAME[0]}"
 		return 1
 	fi
 	
 	declare -n array=$1
 	local return_str=""
-	[ ${array["d"]} -gt 0 ] && return_str="${return_str}${array["d"]} days "
-	[ ${array["d"]} -gt 0 ] || [ ${array["h"]} -gt 0 ] && return_str="${return_str}${array["h"]}:"
-	[ ${array["m"]} -gt 9 ] && return_str="${return_str}${array["m"]}:" || return_str="${return_str}0${array["m"]}:"
-	[ ${array["s"]} -gt 9 ] && return_str="${return_str}${array["s"]}" || return_str="${return_str}0${array["s"]}"
+	[ ${array[d]} -gt 0 ] && return_str="${return_str}${array[d]} days "
+	[ ${array[d]} -gt 0 ] || [ ${array[h]} -gt 0 ] && return_str="${return_str}${array[h]}:"
+	[ ${array[m]} -gt 9 ] && return_str="${return_str}${array[m]}:" || return_str="${return_str}0${array[m]}:"
+	[ ${array[s]} -gt 9 ] && return_str="${return_str}${array[s]}" || return_str="${return_str}0${array[s]}"
 	echo $return_str
 	return 0
 }
@@ -214,21 +220,21 @@ get_av_merge () {
 	fi
 
 	local add
-	local avgTime
-	local file=( $( ls /var/log/emerge.log* ) )
+	local avgMergeTime
+	local file=( $( ls --sort time /var/log/emerge.log* ) )
 	for i in ${!file[@]}; do
 		case ${file[$i]} in
 		 *.gz|*.zip)
-		 	avgTime=$( qlop -amMC "$package" -f <(zcat "${file[$i]}") | awk -F' ' '{print $2}' )
+		 	avgMergeTime=$( qlop -amMC "$package" -f <(zcat "${file[$i]}") | awk -F' ' '{print $2}' )
 		 	;;
 		 *)
-		 	avgTime=$( qlop -amMC "$package" -f "${file[$i]}" | awk -F' ' '{print $2}' )
+		 	avgMergeTime=$( qlop -amMC "$package" -f "${file[$i]}" | awk -F' ' '{print $2}' )
 			;;
 		esac
-		[ $avgTime ] && break
+		[ $avgMergeTime ] && break
 	done
 	
-	echo $avgTime
+	echo $avgMergeTime
 	return 0
 }
 
@@ -243,25 +249,25 @@ zenity_emerge() {
 	 -s|--sync)
 	 	local ACTION='sync'
 	 	local options="--pulsate"
-	 	local title="Syncing repositories"
+	 	local title=$"Syncing repositories"
 	 	local slp=.5
 	 	local exFuncs=( rsync emerge )
-	 	local exText="An error occurred while syncing, please check logs"
+	 	local exText=$"An error occurred while syncing, please check logs"
 	 	local exCode=2
 	 	;;
 	 -C|--check-depclean)
 	 	local ACTION='check-depclean'
-	 	local title="Preparing for cleaning"
+	 	local title=$"Preparing for cleaning"
 	 	local options="--pulsate"
 	 	local slp=.5
 		local exFuncs=( emerge )
-	 	local exText="An error occurred while checking for obsolete packages, please check logs"
+	 	local exText=$"An error occurred while checking for obsolete packages, please check logs"
 	 	local exCode=5
 	 	;;
 	 -c|--depclean)
 	 	shift
 	 	local ACTION='depclean'
-	 	local title="Cleaning your system"
+	 	local title=$"Cleaning your system"
 	 	local slp=.5
 	 	local shift
 	 	local options=""; excluded=""
@@ -271,7 +277,7 @@ zenity_emerge() {
 	 	 	 	local excluded="$2"
 	 	 		;;
 	 	 	 *)
-	 	 	 	echo "Parametor error for function zenity_emerge"
+	 	 	 	echo $"Invalid parameter $1 for function ${FUNCNAME[0]}"
 	 	 	 	exit 255
 	 	 	 	;;
 	 	 	esac
@@ -282,7 +288,7 @@ zenity_emerge() {
 	 	local cleaning=0
 	 	local percent=0
 	 	local exFuncs=( emerge )
-	 	local exText="An error occurred while cleaning system, please check logs"
+	 	local exText=$"An error occurred while cleaning system, please check logs"
 	 	local exCode=6
 		;;
 	 -k|--check)
@@ -291,16 +297,16 @@ zenity_emerge() {
 	 	local UP=$2
 		case $UP in
 		 @*)
-		 	title="Checking for upgrades"
+		 	title=$"Checking for upgrades"
 		 	;;
 		 *)
-		 	title="Checking for ${UP} upgrade"
+		 	title=$"Checking for ${UP} upgrade"
 		 	;;
 		esac
 		local options="--pulsate"
 		local slp=.5
 	 	local exFuncs=( emerge )
-	 	local exText="An error occurred while checking dependencies, please check logs"
+	 	local exText=$"An error occurred while checking dependencies, please check logs"
 	 	local exCode=3
 	 	;;
 	 	
@@ -310,14 +316,14 @@ zenity_emerge() {
 	 	local UP=$1
 		case $UP in
 		 "@world")
-			local title="Upgrading your system"
+			local title=$"Upgrading your system"
 			;;
 		 @*)
-			local title="Upgrading ${UP}"
+			local title=$"Upgrading ${UP}"
 			;;
 		 *)
 		 	local pack=${UP#*/}
-		 	local title="Upgrading ${pack^}"
+		 	local title=$"Upgrading ${pack^}"
 			;;
 		esac
 		local slp=1
@@ -335,7 +341,7 @@ zenity_emerge() {
 	 	 	 	excluded="$2"
 	 	 		;;
 	 	 	 *)
-	 	 	 	echo "Parametor error for function zenity_emerge"
+	 	 	 	echo $"Invalid parameter $1 for function ${FUNCNAME[0]}"
 	 	 	 	exit 255
 	 	 	 	;;
 	 		esac
@@ -368,9 +374,9 @@ zenity_emerge() {
 		# elapsed for calculating percentage & elapsed_h to print current package's merge time
 		local emerging=0; local installing=0
 		local percent=0; local elapsed=0;
-		declare -A elapsed_h=( ['machine']=0 ['d']=0 ['h']=0 ['m']=0 ['s']=0 )
+		declare -A elapsed_h=( [machine]=0 [d]=0 [h]=0 [m]=0 [s]=0 )
 	 	local exFuncs=( emerge )
-	 	local exText="An error occurred while upgrading system, please check logs"
+	 	local exText=$"An error occurred while upgrading system, please check logs"
 	 	local exCode=4
 		;;
 	esac
@@ -382,7 +388,8 @@ zenity_emerge() {
 			emerge --sync |& tee "${tmpFile["logs"]}"
 			res=$?
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
-				echo -e "${green}Updating eix database ...${nocolor}"
+				local eix_mess=$"Updating eix database"
+				echo -e "${green}${eix_mess} ...${nocolor}"
 				eix-update & pid=$!
 				exFuncs[ $(( ${#exFuncs[@]}-1 )) ]=$pid
 				wait $pid
@@ -433,12 +440,13 @@ zenity_emerge() {
 		case $ACTION in
 		 'sync')
 		 	if pgrep eix-update &>/dev/null; then
-		 		echo "# Updating eix database"
+		 		echo "# ${eix-mess}"
 		 	else print_line
 		 	fi
 		 	;;
 		 'check-depclean')
-		 	echo "# Checking for obsolete packages ${dots}"
+		 	local mess=$"Checking for obsolete packages"
+		 	echo "# ${mess} ${dots}"
 		 	[ "$dots" = "..." ] && dots="" || dots="${dots}."
 		 	;;
 		 	
@@ -455,7 +463,8 @@ zenity_emerge() {
 		 	;;
 		 	
 		 'check')
-		 	echo "# Calculating dependencies ${dots}"
+		 	local mess=$"Calculating dependencies"
+		 	echo "# ${mess} ${dots}"
 		 	[ "$dots" = "..." ] && dots="" || dots="${dots}."
 		 	;;
 		 	
@@ -514,7 +523,8 @@ zenity_emerge() {
 				else echo " - ${print}"
 				fi
 			else
-				echo "# Calculating upgrade ${dots}"
+				local mess=$"Calculating dependencies"
+				echo "# ${mess} ${dots}"
 				[ "$dots" = "..." ] && dots="" || dots="${dots}."
 			fi
 			
@@ -540,12 +550,12 @@ zenity_emerge() {
 		mess=$( sed -n "${message[$i]}p" "${tmpFile["logs"]}" )
 		case "${mess# * }" in
 		 IMPORTANT:*)
-			title="Configuration file needs update"
+			title=$"Configuration file needs update"
 			start=$(( ${message[$i]} ))
 			;;
 		 *)
 			package=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${tmpFile["logs"]}" )
-			title="Messages for ${package}"
+			title=$"Messages for ${package}"
 			start=$(( ${message[$i]}+1 ))
 			;;
 		esac
@@ -601,15 +611,16 @@ zenity_upgrade () {
 		if [ "$ACTION" = "depclean" ]; then
 			unset check
 		# Needs editing /etc/portage/
-		elif grep '^!!!' "${tmpFile["logs"]}" &> /dev/null; then
-			remove_blanks "${tmpFile["logs"]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "Some configuration is necessary to proceed"
+		elif grep -q '^!!!' "${tmpFile["logs"]}"; then
+			remove_blanks "${tmpFile["logs"]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title $"Some configuration is necessary to proceed"
 			[ $? -gt 0 ] && prepare_for_exit && return 11
 			
 		else unset check		
 		fi
 	done
 	
-	local text="Uncheck packages you want to exclude.\n"
+	local text=$"Uncheck packages you want to exclude."
+	text+="\n"
 	case $ACTION in
 	 'depclean')
 		local title="unmerged"
@@ -649,19 +660,13 @@ zenity_upgrade () {
 			package[$i]=${list[$i]%-[0-9]*}
 			version[$i]=${list[$i]#${package[$i]}-}
 			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
-			grep ${package[$i]} ${worldFile} >/dev/null && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
+			grep -q ${package[$i]} ${worldFile} && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
 			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
 			time_h[$i]=""
 		done
 		if [ ${#nomerge_action[@]} -gt 0 ]; then
-			if [ ${#nomerge_action[@]} -gt 1 ]; then
-				pron="Those"
-				plur="s"
-			else
-				pron="This"
-				plur=""
-			fi
-			text+="\n${pron} package${plur} won't be installed :\n"
+			[ ${#nomerge_action[@]} -gt 1 ] && plur="s" || plur=""
+			text+="\n"; text+=$"Some package${plur} won't be installed :"; text+="\n"
 			for i in ${!nomerge_action[@]}; do
 				nomerge[$i]=$( sed '/^\[ebuild/d' "${tmpFile["logs"]}" | sed -n "$(( $i+1 ))p" | cut -d] -f2- )
 				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge[$i]}\n"
@@ -673,13 +678,14 @@ zenity_upgrade () {
 		local totTime=0
 		if [ $ESTIMATE ]; then
 			# estimate each time
-			echo -e "${green}Estimating merge time...${nocolor}"
+			local mess=$"Estimating merge time"
+			echo -e "${green}${mess}...${nocolor}"
 			for i in ${!list[@]}; do
 				time[$i]=$( get_av_merge "${package[$i]}" )
 				if [ -z ${time[$i]} ]; then
 					time[$i]=0
 					time_h[$i]='??:??'
-					echo "Unknown merge time for ${package[$i]}"
+					echo $"Unknown merge time for ${package[$i]}"
 				else
 					let nb+=1
 					let totTime+=${time[$i]}
@@ -687,7 +693,7 @@ zenity_upgrade () {
 					get_human_time time_hum ${time[$i]}
 					time_h[$i]=$( print_human_time time_hum )
 					unset time_hum
-					echo "Average merge time for ${package[$i]} is ${time_h[$i]}"
+					echo $"Average merge time for ${package[$i]} is ${time_h[$i]}"
 				fi
 			done
 		fi
@@ -696,7 +702,8 @@ zenity_upgrade () {
 		if [ $nb -eq ${#list[@]} ]; then
 			declare -A time_hum
 			get_human_time time_hum $totTime
-			text+="Estimated merge time is `print_human_time time_hum`.\n"
+			text+=$"Estimated merge time is"
+			text+=" $( print_human_time time_hum ).\n"
 			unset time_hum
 		fi
 		
@@ -709,7 +716,7 @@ zenity_upgrade () {
 			aborted=1
 			;;
 		 *)
-		 	text="${UP} needs update, it's highly recommended to do it first.\n"
+		 	text=$"${UP} needs update, it's highly recommended to do it first.\n"
 		 	check=""
 			[ $ESTIMATE ] || options+=" --hide-column 5"		 	
 			aborted=11
@@ -725,7 +732,7 @@ zenity_upgrade () {
 	esac	
 	
 	[ $number -gt 1 ] && plur="s" || plur=""
-	title="${number} package${plur} should be ${title}" 
+	[ $ACTION = 'upgrade' ] && title=$"${number} package${plur} should be merged" || title=$"${number} package${plur} should be unmerged"
 	
 	choice=( $(
 		for i in ${!package[@]}; do
@@ -738,7 +745,8 @@ zenity_upgrade () {
 		[ "${UP:0:1}" = '@' ] || choice=( ${package[@]} )
 	fi
 	if [ "$ret" -gt 0 ] || [ ${#choice[@]} -eq 0 ]; then
-		echo -e "${orange}Aborted${nocolor}"
+		local mess=$"Aborted"
+		echo -e "${orange}${mess}${nocolor}"
 		prepare_for_exit
 		if [ "$ACTION" = "upgrade" ] && [ "${UP:0:1}" = '@' ]; then
 			return 11
@@ -782,7 +790,7 @@ zenity_upgrade () {
 		fi
 		;;
 	 'upgrade')
-		if grep "!!! existing preserved libs found" "${tmpFile["logs"]}" &> /dev/null; then
+		if grep -q "!!! existing preserved libs found" "${tmpFile["logs"]}"; then
 			ret=3
 		elif [ ! -z "${exclude}" ] || [ ! "${UP}" = "@world" ]; then
 			ret=2
@@ -854,7 +862,7 @@ HELP
 		;;
 
 	 *)
-		echo -e "${red}Unknown parameter ${1}${nocolor}, exiting..." && exit 255
+		echo -e $"${red}Unknown parameter ${1}${nocolor}, exiting..." && exit 255
 		;;
 	esac
 	shift
@@ -871,26 +879,28 @@ repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 
 # Search for last sync timestamps
 last=0
-text="Checking repositories..."
+text=$"Checking repositories"
+text+="..."
 echo -e "${green}${text}${nocolor}"
 unset time
 for i in "${!repos[@]}"; do
 	if [ -f "${repos[$i]}/metadata/timestamp.chk" ]; then
 		timestamp=$( cat "${repos[$i]}/metadata/timestamp.chk" )
 		time[$i]=$( date -d "${timestamp}" "+%s" )
-		text="Last sync for ${repos[$i]##*/} is `date -d @${time[$i]}`"
+		text=$"Last sync for ${repos[$i]##*/} is "
+		text+="`date -d @${time[$i]}`"
 		[ ! $QUIET ] || [ $VERBOSE ] && echo "${text}"
 
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
-			text1="Sync date for ${repos[$i]##*/} is newer than now"
-			text2=", please correct your local time"
-			[ ! $GTK ] && echo -e "${red}${text1}${nocolor}${text2}" || zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title "Time error" --text "<span color=\"red\">${text1}</span>${text2}"
-			echo "Exiting..."
+			text1=$"Sync date for ${repos[$i]##*/} is newer than now"
+			text2=$", please correct your local time"
+			[ ! $GTK ] && echo -e "${red}${text1}${nocolor}${text2}" || zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title $"Time error" --text "<span color=\"red\">${text1}</span>${text2}"
+			echo $"Exiting..."
 			exit 1
 		fi
 
 	else
-		text="Unknown last sync for ${repos[$i]##*/}"
+		text=$"Unknown last sync for ${repos[$i]##*/}"
 		[ $VERBOSE ] && echo "${text}"
 	fi
 done
@@ -906,50 +916,55 @@ now=$(date "+%s")
 # less than 1 day
 if [ $now -lt $last ]; then
 
-	text1="Your last sync is newer than 1 day"
-	text2="Do you want to sync again ?"
-	text3="-->" 
+	text1=$"Your last sync is newer than 1 day"
+	text2=$"Do you want to sync again ?"
+	text3="-->"
+	answerok=$"y"
+	answerko=$"n"
+	answers="(${answerok}/${answerko^})"
 
 	if [ $GTK ]; then
 		if ! zenity --width ${WIDTH} --window-icon "${iconPath}" --question --title "${text1}" --text "${text2}" --default-cancel; then
 			set_param 'sync' 0
 		fi
 	else
-		echo "${bold}${text1}${normal}. ${text2} (y/N)"
+		echo "${bold}${text1}${normal}. ${text2} ${answers}"
+		
 		while true;	do
 
 			read -p "${text3}" ans
 
 			case "$ans" in
-				[nN]*|'')
+				${answerko}|${answerko^}|'')
 					set_param 'sync' 0
 					break 2
 					;;
 
-				[yY]*)
+				${answerok}|${answerok^})
 					break 2
 					;;
 
 				*)
-					echo "Unknown answer (y/N ?)"
+					echo -n $"Unknown answer"
+					echo " (${answerok}/${answerko^} ?)"
 					;;
-
 			esac
 		done
 	fi
-	text="Last sync newer than 24h, "
-	[ $SYNC ] && echo "${text}forcing sync" || echo "${text}skipping sync"
+	text1=$"Last sync newer than 24h"
+	[ $SYNC ] && echo text2=$"forcing sync" || text2=$"skipping sync"
+	echo "${text1}, ${text2}"
 fi
 
 # Sync
 if [ $SYNC ]; then
 	if [ ! $GTK ]; then
-		title="Syncing repositories"
+		title=$"Syncing repositories"
 		echo -e "${green}${title}...${nocolor}"
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
 		if type eix &> /dev/null; then
-			echo "Updating eix database"
+			echo $"Updating eix database"
 			eix-update
 		fi
 	else
@@ -985,7 +1000,7 @@ if [ $GTK ]; then
 		choice=( $(
 			for i in ${!index[@]}; do
 				echo -e "TRUE\n${index[$i]}\n${title[$i]}\n${date[$i]}"
-			done | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --list --checklist --column 'read' --column 'index' --column 'Title' --column 'Date' --hide-column 2 --separator ' ' --title "${#index[@]} news need reading" --text "Keep checked those you want to read now" ) )
+			done | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --list --checklist --column 'read' --column 'index' --column 'Title' --column 'Date' --hide-column 2 --separator ' ' --title $"${#index[@]} news need reading" --text $"Keep checked those you want to read now" ) )
 
 		for i in ${!choice[@]}; do
 			eselect news read ${choice[$i]} | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title[$i]}"
@@ -1008,8 +1023,8 @@ if [ $GTK ]; then
 	 	set_param 'upgrade' 0
 	 	;;
 	 2) # partial
-		text="Partial upgrade is done"
-		zenity --width ${WIDTH} --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}"
+		text=$"Partial upgrade is done"
+		zenity --width ${WIDTH} --window-icon "${iconPath}" --info --title $"Upgrade" --text "${text}"
 		exit 0
 	 	;;
 	 3) # preserved libs
@@ -1023,13 +1038,13 @@ if [ $GTK ]; then
 		
 # Standard upgrade
 else
-	text="Checking for upgrades"
+	text=$"Checking for upgrades"
 	echo -e "${green}${text}...${nocolor}"
 	emerge -a${QUIET}${VERBOSE}uDN ${SET}
 
 	if [ $? -gt 0 ]; then
-		text1="An error occurred on compilation time"
-		text2="please check logs for more information"
+		text1=$"An error occurred on compilation time"
+		text2=$"please check logs for more information"
 		echo -e "${red}${text1}${nocolor}, ${text2}"
 		exit 4
 	fi
@@ -1054,14 +1069,14 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 
 	# Standard cleaning
 	else
-		text="Cleaning your system"
+		text=$"Cleaning your system"
 		echo -e "${green}${text}...${nocolor}"
 		emerge -a${QUIET}${VERBOSE}c || exit 5
 	fi
 fi
 
 # Finished
-[ $UPGRADE_NEEDED ] && text="Your system is now up to date" || text="Your system was already up to date"
+[ $UPGRADE_NEEDED ] && text=$"Your system is now up to date" || text=$"Your system was already up to date"
 [ $GTK ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}" && prepare_for_exit
 echo "${text}"
 
