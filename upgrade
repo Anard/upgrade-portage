@@ -385,7 +385,7 @@ zenity_emerge() {
 	(
 		case $ACTION in
 		 'sync')
-			emerge --sync |& tee "${tmpFile["logs"]}"
+			emerge --sync |& tee "${tmpFile[logs]}"
 			res=$?
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
 				local eix_mess=$"Updating eix database"
@@ -396,21 +396,21 @@ zenity_emerge() {
 			fi
 			;;
 		 'check-depclean')
-		 	emerge -pqc |& tee "${tmpFile["logs"]}"
+		 	emerge -pqc |& tee "${tmpFile[logs]}"
 		 	res=$?
 		 	;;
 		 'depclean')
-		 	emerge -qc ${excluded} |& tee "${tmpFile["logs"]}"
+		 	emerge -qc ${excluded} |& tee "${tmpFile[logs]}"
 		 	res=$?
 		 	;;
 		 'check')
 		 	case ${UP} in
 		 	 @*)
-		 		emerge -pquDN ${UP} |& tee "${tmpFile["logs"]}"
+		 		emerge -pquDN ${UP} |& tee "${tmpFile[logs]}"
 		 		res=$?
 		 		;;
 		 	 *)
-		 	 	emerge -pqu1 ${UP} |& tee "${tmpFile["logs"]}"
+		 	 	emerge -pqu1 ${UP} |& tee "${tmpFile[logs]}"
 		 	 	res=$?
 		 	 	;;
 		 	esac
@@ -418,23 +418,23 @@ zenity_emerge() {
 		 'upgrade')
 		 	case ${UP} in
 		 	 @*)
-		 		emerge -quDN ${excluded} ${UP} |& tee "${tmpFile["logs"]}"
+		 		emerge -quDN ${excluded} ${UP} |& tee "${tmpFile[logs]}"
 		 		res=$?
 		 		;;
 		 	 *)
-		 	 	emerge -qu1 ${UP} |& tee "${tmpFile["logs"]}"
+		 	 	emerge -qu1 ${UP} |& tee "${tmpFile[logs]}"
 		 	 	res=$?
 		 	 	;;
 		 	esac
 		 	;;
 		esac
-		echo $res > "${tmpFile["result"]}"
+		echo $res > "${tmpFile[result]}"
 	) &
 	exFuncs=( ${exFuncs[@]} $! )
 	sleep .5
 	dots=""
 		
-	while [ ! -f "${tmpFile["result"]}" ]; do
+	while [ ! -f "${tmpFile[result]}" ]; do
 		sleep $slp
 		
 		case $ACTION in
@@ -471,7 +471,7 @@ zenity_emerge() {
 		 'upgrade')
 			unset edited
 
-			if [ -f "${tmpFile["logs"]}" ]; then
+			if [ -f "${tmpFile[logs]}" ]; then
 				new=$( get_line Emerging | awk -F[\(\)\ ] '{ print $4 }' )
 				[ ! -z $new ] && [ $new -gt $emerging ] && emerging=$new && edited=1
 
@@ -504,15 +504,15 @@ zenity_emerge() {
 			if [ $emerging -gt 0 ]; then
 				# human readable elapsed time
 				if [ ! $edited ] || [ $installing -eq $emerging ]; then
-					elapsed_h["machine"]=$(( ${elapsed_h["machine"]}+1 ))
-					get_human_time --increment elapsed_h ${elapsed_h["machine"]}
+					elapsed_h[machine"]=$(( ${elapsed_h["machine]}+1 ))
+					get_human_time --increment elapsed_h ${elapsed_h[machine]}
 				fi
 								
 				# recalculate percentage
 				if [ ${mergeEst[$current]} -eq 0 ]; then
 					percent=$(( 100*${elapsed}/${total} ))
-				elif [ ${elapsed_h["machine"]} -lt ${mergeEst[$cur_index]} ]; then
-					percent=$(( 100* (${elapsed}+${elapsed_h["machine"]}) / ${total} ))
+				elif [ ${elapsed_h[machine]} -lt ${mergeEst[$cur_index]} ]; then
+					percent=$(( 100* (${elapsed}+${elapsed_h[machine]}) / ${total} ))
 				fi
 
 				# print line
@@ -543,18 +543,18 @@ zenity_emerge() {
 
 	# Print messages from emerging
 	# $message is a table of a new messages line
-	[ $ACTION = 'upgrade' ] && local message=( $( grep -Fn 'Messages for package' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) ) || local message=( )
-	message=( "${message[@]}" $( grep -Fn ' * IMPORTANT:' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) )
+	[ $ACTION = 'upgrade' ] && local message=( $( grep -Fn 'Messages for package' "${tmpFile[logs]}" | awk -F: '{print $1}' ) ) || local message=( )
+	message=( "${message[@]}" $( grep -Fn ' * IMPORTANT:' "${tmpFile[logs]}" | awk -F: '{print $1}' ) )
 	
 	for i in ${!message[@]}; do
-		mess=$( sed -n "${message[$i]}p" "${tmpFile["logs"]}" )
+		mess=$( sed -n "${message[$i]}p" "${tmpFile[logs]}" )
 		case "${mess# * }" in
 		 IMPORTANT:*)
 			title=$"Configuration file needs update"
 			start=$(( ${message[$i]} ))
 			;;
 		 *)
-			package=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${tmpFile["logs"]}" )
+			package=$( sed -n "${message[$i]} s/^.*package \(.*\):$/\1/p" "${tmpFile[logs]}" )
 			title=$"Messages for ${package}"
 			start=$(( ${message[$i]}+1 ))
 			;;
@@ -562,14 +562,14 @@ zenity_emerge() {
 		[ $i -eq $(( ${#message[@]}-1 )) ] && end='$' || end=$(( ${message[$i+1]}-1 ))
 		
 		# print messages
-		sed -n "${start},${end}p" "${tmpFile["logs"]}" | sed 's/^ \* //' | remove_blanks \
+		sed -n "${start},${end}p" "${tmpFile[logs]}" | sed 's/^ \* //' | remove_blanks \
 		| zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title}"
 	done
 
 	#error
-	[ -s "${tmpFile["result"]}" ] && [ $( cat "${tmpFile["result"]}" ) -gt 0 ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title "Error" --text "${exText}" && prepare_for_exit && return ${exCode}
+	[ -s "${tmpFile[result"]}" ] && [ $( cat "${tmpFile["result]}" ) -gt 0 ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title "Error" --text "${exText}" && prepare_for_exit && return ${exCode}
 	
-	rm "${tmpFile["result"]}"
+	rm "${tmpFile[result]}"
 
 	return 0
 }
@@ -606,13 +606,13 @@ zenity_upgrade () {
 		fi
 		
 		# nothing found
-		[ ! -s "${tmpFile["logs"]}" ] && prepare_for_exit && return 1
+		[ ! -s "${tmpFile[logs]}" ] && prepare_for_exit && return 1
 		
 		if [ "$ACTION" = "depclean" ]; then
 			unset check
 		# Needs editing /etc/portage/
-		elif grep -q '^!!!' "${tmpFile["logs"]}"; then
-			remove_blanks "${tmpFile["logs"]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title $"Some configuration is necessary to proceed"
+		elif grep -q '^!!!' "${tmpFile[logs]}"; then
+			remove_blanks "${tmpFile[logs]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title $"Some configuration is necessary to proceed"
 			[ $? -gt 0 ] && prepare_for_exit && return 11
 			
 		else unset check		
@@ -624,16 +624,16 @@ zenity_upgrade () {
 	case $ACTION in
 	 'depclean')
 		local title="unmerged"
-		local number=$( sed -n '$p' "${tmpFile["logs"]}" | awk -F' ' '{print $4}' )
+		local number=$( sed -n '$p' "${tmpFile[logs]}" | awk -F' ' '{print $4}' )
 		# remove unwanted lines from output
-		sed -i '/\//!d' "${tmpFile["logs"]}"
-		sed -i '/=/d' "${tmpFile["logs"]}"
-		sed -i '/*/d' "${tmpFile["logs"]}"
+		sed -i '/\//!d' "${tmpFile[logs]}"
+		sed -i '/=/d' "${tmpFile[logs]}"
+		sed -i '/*/d' "${tmpFile[logs]}"
 
-		local package=( $( cut -d: -f1 "${tmpFile["logs"]}" ) )
+		local package=( $( cut -d: -f1 "${tmpFile[logs]}" ) )
 		unset versions selected protected omitted line
 		for i in ${!package[@]}; do
-			versions[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile["logs"]}" | cut -d: -f2 )
+			versions[$i]=$( sed -n "$(( ${i}+1 ))p" "${tmpFile[logs]}" | cut -d: -f2 )
 			read selected[$i] protected[$i] omitted[$i] <<< "${versions[$i]}"
 			line[$i]="TRUE\n${package[$i]}\n${selected[$i]}\n${protected[$i]}\n${omitted[$i]}"
 		done
@@ -645,13 +645,13 @@ zenity_upgrade () {
 
 	'upgrade')
 		local title="merged"
-		local messages=$( sed '/^\[/d' "${tmpFile["logs"]}" )
-		sed -i '/^\[/!d' "${tmpFile["logs"]}"
+		local messages=$( sed '/^\[/d' "${tmpFile[logs]}" )
+		sed -i '/^\[/!d' "${tmpFile[logs]}"
 		
 		# list of all packages that would be merged
 		unset nomerge
-		local nomerge_action=( $( sed '/^\[ebuild/d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d' ' -f1 ) )
-		local list=( $( sed '/^\[ebuild/!d' "${tmpFile["logs"]}" | cut -d[ -f2 | cut -d] -f2 ) )
+		local nomerge_action=( $( sed '/^\[ebuild/d' "${tmpFile[logs]}" | cut -d[ -f2 | cut -d' ' -f1 ) )
+		local list=( $( sed '/^\[ebuild/!d' "${tmpFile[logs]}" | cut -d[ -f2 | cut -d] -f2 ) )
 		local number=${#list[@]}
 
 		# prepare output and ask for final choice
@@ -659,16 +659,16 @@ zenity_upgrade () {
 		for i in ${!list[@]}; do
 			package[$i]=${list[$i]%-[0-9]*}
 			version[$i]=${list[$i]#${package[$i]}-}
-			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d' ' -f2- | cut -d] -f1 )
+			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d' ' -f2- | cut -d] -f1 )
 			grep -q ${package[$i]} ${worldFile} && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
-			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | cut -d[ -f3 | cut -d] -f1 )
+			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d[ -f3 | cut -d] -f1 )
 			time_h[$i]=""
 		done
 		if [ ${#nomerge_action[@]} -gt 0 ]; then
 			[ ${#nomerge_action[@]} -gt 1 ] && plur="s" || plur=""
 			text+="\n"; text+=$"Some package${plur} won't be installed :"; text+="\n"
 			for i in ${!nomerge_action[@]}; do
-				nomerge[$i]=$( sed '/^\[ebuild/d' "${tmpFile["logs"]}" | sed -n "$(( $i+1 ))p" | cut -d] -f2- )
+				nomerge[$i]=$( sed '/^\[ebuild/d' "${tmpFile[logs]}" | sed -n "$(( $i+1 ))p" | cut -d] -f2- )
 				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge[$i]}\n"
 			done
 		fi
@@ -785,12 +785,12 @@ zenity_upgrade () {
 	
 	case $ACTION in
 	 'depclean')
-		if [ ! -s "${tmpFile["logs"]}" ] && [ -z "$exclude" ]; then
+		if [ ! -s "${tmpFile[logs]}" ] && [ -z "$exclude" ]; then
 			ret=1
 		fi
 		;;
 	 'upgrade')
-		if grep -q "!!! existing preserved libs found" "${tmpFile["logs"]}"; then
+		if grep -q "!!! existing preserved libs found" "${tmpFile[logs]}"; then
 			ret=3
 		elif [ ! -z "${exclude}" ] || [ ! "${UP}" = "@world" ]; then
 			ret=2
@@ -972,7 +972,7 @@ if [ $SYNC ]; then
 		ret=$? && [ $ret -gt 0 ] && exit $ret
 		
 		# upgrade portage ?
-		if [ $( grep -n 'An update to portage is available' "${tmpFile["logs"]}" | awk -F: '{print $1}' ) ]; then
+		if [ $( grep -n 'An update to portage is available' "${tmpFile[logs]}" | awk -F: '{print $1}' ) ]; then
 			set_param 'portage' 1
 		else set_param 'portage' 0
 		fi
@@ -990,11 +990,11 @@ if [ $GTK ]; then
 	# first check for news
 	news=$( emerge -q --check-news )
 	if [ ! -z "${news}" ]; then
-		eselect news list | sed -n 's/ N //p' > "${tmpFile["logs"]}"
-		index=( $( cut -d[ -f2 "${tmpFile["logs"]}" | cut -d] -f1) )
+		eselect news list | sed -n 's/ N //p' > "${tmpFile[logs]}"
+		index=( $( cut -d[ -f2 "${tmpFile[logs]}" | cut -d] -f1) )
 		unset date title
 		for i in ${!index[@]}; do
-			read date[$i] title[$i] <<< $( sed -n "$(( $i+1 ))p" "${tmpFile["logs"]}" | awk '{for (i=2; i<=NF; i++) printf "%s " ,$i }' )
+			read date[$i] title[$i] <<< $( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | awk '{for (i=2; i<=NF; i++) printf "%s " ,$i }' )
 		done
 
 		choice=( $(
