@@ -3,8 +3,8 @@
 version="1.04-r4"; script_name=`basename "$0"`
 
 TEXTDOMAIN=upgrade-portage
-TEXTDOMAINDIR=/usr/share/locale
-#TEXTDOMAINDIR=/home/anard/Applications/upgrade-portage/locale   # for testing
+#TEXTDOMAINDIR=/usr/share/locale
+TEXTDOMAINDIR=/home/anard/Applications/upgrade-portage/locale   # for testing
 
 configPath="/usr/lib"
 if [ -f "${configPath}/shell-text.cnf" ]; then
@@ -221,21 +221,21 @@ get_av_merge () {
 	fi
 
 	local add
-	local avgTime
-	local file=( $( ls /var/log/emerge.log* ) )
+	local avgMergeTime
+	local file=( $( ls --sort time /var/log/emerge.log* ) )
 	for i in ${!file[@]}; do
 		case ${file[$i]} in
 		 *.gz|*.zip)
-		 	avgTime=$( qlop -amMC "$package" -f <(zcat "${file[$i]}") | awk -F' ' '{print $2}' )
+		 	avgMergeTime=$( qlop -amMC "$package" -f <(zcat "${file[$i]}") | awk -F' ' '{print $2}' )
 		 	;;
 		 *)
-		 	avgTime=$( qlop -amMC "$package" -f "${file[$i]}" | awk -F' ' '{print $2}' )
+		 	avgMergeTime=$( qlop -amMC "$package" -f "${file[$i]}" | awk -F' ' '{print $2}' )
 			;;
 		esac
-		[ $avgTime ] && break
+		[ $avgMergeTime ] && break
 	done
 	
-	echo $avgTime
+	echo $avgMergeTime
 	return 0
 }
 
@@ -524,7 +524,7 @@ zenity_emerge() {
 				else echo " - ${print}"
 				fi
 			else
-				local mess="Calculating dependencies"
+				local mess=$"Calculating dependencies"
 				echo "# ${mess} ${dots}"
 				[ "$dots" = "..." ] && dots="" || dots="${dots}."
 			fi
