@@ -47,12 +47,16 @@ msgid "Checking for obsolete packages"
 msgstr ""
 msgid "Calculating dependencies"
 msgstr ""
-
-# Function zenity_upgrade
 msgid "Configuration file needs update"
+msgstr ""
+msgid "Skip"
+msgstr ""
+msgid "Continue"
 msgstr ""
 msgid "Messages for ${package}"
 msgstr ""
+
+# Function zenity_upgrade
 msgid "Some configuration is necessary to proceed"
 msgstr ""
 msgid "Uncheck packages you want to exclude."

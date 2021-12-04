@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to sync && upgrade Gentoo portage
-version="1.04-r5"; script_name=`basename "$0"`
+version="1.04-r4"; script_name=`basename "$0"`
 
 TEXTDOMAIN=upgrade-portage
 TEXTDOMAINDIR=/usr/share/locale
@@ -533,7 +533,7 @@ zenity_emerge() {
 		 	;;
 		esac
 		
-	done | zenity --width ${WIDTH} --window-icon "${iconPath}" --cancel-label "Skip" --ok-label "Continue" --progress --title "${title}" --text "" --auto-close ${options}
+	done | zenity --width ${WIDTH} --window-icon "${iconPath}" --cancel-label $"Skip" --ok-label $"Continue" --progress --title "${title}" --text "" --auto-close ${options}
 
 	# Aborted
 	if [ $? -gt 0 ]; then
