@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to sync && upgrade Gentoo portage
-version="1.04-r4"; script_name=`basename "$0"`
+version="1.04-r5"; script_name=`basename "$0"`
 
 TEXTDOMAIN=upgrade-portage
 TEXTDOMAINDIR=/usr/share/locale
