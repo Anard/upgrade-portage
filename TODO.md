@@ -9,5 +9,3 @@ Graphical interface via zenity
 - check portage messages
 
 - get colored/bold output from emerge to zenity
-
-- remove quotes from table keys
