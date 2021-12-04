@@ -10,8 +10,4 @@ Graphical interface via zenity
 
 - get colored/bold output from emerge to zenity
 
-- translated interface via checking locales, install translations if l10n
-- remove gtk USE flag
-
 - remove quotes from table keys
-- use $" " for internationalization
