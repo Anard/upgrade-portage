@@ -504,7 +504,7 @@ zenity_emerge() {
 			if [ $emerging -gt 0 ]; then
 				# human readable elapsed time
 				if [ ! $edited ] || [ $installing -eq $emerging ]; then
-					elapsed_h[machine"]=$(( ${elapsed_h["machine]}+1 ))
+					elapsed_h[machine]=$(( ${elapsed_h[machine]}+1 ))
 					get_human_time --increment elapsed_h ${elapsed_h[machine]}
 				fi
 								
@@ -567,7 +567,7 @@ zenity_emerge() {
 	done
 
 	#error
-	[ -s "${tmpFile[result"]}" ] && [ $( cat "${tmpFile["result]}" ) -gt 0 ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title "Error" --text "${exText}" && prepare_for_exit && return ${exCode}
+	[ -s "${tmpFile[result]}" ] && [ $( cat "${tmpFile[result]}" ) -gt 0 ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title $"Error" --text "${exText}" && prepare_for_exit && return ${exCode}
 	
 	rm "${tmpFile[result]}"
 

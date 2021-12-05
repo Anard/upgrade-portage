@@ -55,6 +55,8 @@ msgid "Continue"
 msgstr ""
 msgid "Messages for ${package}"
 msgstr ""
+msgid "Error"
+msgstr ""
 
 # Function zenity_upgrade
 msgid "Some configuration is necessary to proceed"
