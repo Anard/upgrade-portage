@@ -1092,7 +1092,7 @@ fi
 
 # Finished
 [ $UPGRADE_NEEDED ] && text=$"Your system is now up to date" || text=$"Your system was already up to date"
-[ $GTK ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --info --title "Upgrade" --text "${text}" && prepare_for_exit
+[ $GTK ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --info --title $"Upgrade" --text "${text}" && prepare_for_exit
 echo "${text}"
 
 exit 0
