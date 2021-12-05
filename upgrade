@@ -570,16 +570,12 @@ zenity_emerge() {
 	done
 	
 	# Aborted
-	if [ $ret -gt 0 ]; then
-		prepare_for_exit
-		return 1
-	fi
+	[ $ret -gt 0 ] && prepare_for_exit && return 1
 
 	#error
 	[ -s "${tmpFile[result]}" ] && [ $( cat "${tmpFile[result]}" ) -gt 0 ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title $"Error" --text "${exText}" && prepare_for_exit && return ${exCode}
 	
-	prepare_for_exit
-	return 0
+	prepare_for_exit && return 0
 }
 
 # Upgrade via zenity
