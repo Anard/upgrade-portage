@@ -254,6 +254,7 @@ zenity_emerge() {
 	 	local exFuncs=( rsync emerge )
 	 	local exText=$"An error occurred while syncing, please check logs"
 	 	local exCode=2
+	 	local eix_mess=$"Updating eix database"
 	 	;;
 	 -C|--check-depclean)
 	 	local ACTION='check-depclean'
@@ -388,8 +389,7 @@ zenity_emerge() {
 			emerge --sync |& tee "${tmpFile[logs]}"
 			res=$?
 			if [ $res -eq 0 ] && type eix &> /dev/null; then
-				local eix_mess=$"Updating eix database"
-				echo -e "${green}${eix_mess} ...${nocolor}"
+				echo -e "${green}${eix_mess}...${nocolor}"
 				eix-update & pid=$!
 				exFuncs[ $(( ${#exFuncs[@]}-1 )) ]=$pid
 				wait $pid
@@ -509,7 +509,7 @@ zenity_emerge() {
 				fi
 								
 				# recalculate percentage
-				if [ ${mergeEst[$current]} -eq 0 ]; then
+				if [ ${mergeEst[$cur_index]} -eq 0 ]; then
 					percent=$(( 100*${elapsed}/${total} ))
 				elif [ ${elapsed_h[machine]} -lt ${mergeEst[$cur_index]} ]; then
 					percent=$(( 100* (${elapsed}+${elapsed_h[machine]}) / ${total} ))
@@ -535,10 +535,13 @@ zenity_emerge() {
 		
 	done | zenity --width ${WIDTH} --window-icon "${iconPath}" --cancel-label $"Skip" --ok-label $"Continue" --progress --title "${title}" --text "" --auto-close ${options}
 
+	ret=$?
 	# Aborted
-	if [ $? -gt 0 ]; then
+	if [ $ret -gt 0 ]; then
+		# first backup logs to print messages
+		mv "${tmpFile[logs]}" "/tmp/log.bak"
 		prepare_for_exit ${exFuncs[@]}
-		return 1
+		mv "/tmp/log.bak" "${tmpFile[logs]}"
 	fi
 
 	# Print messages from emerging
@@ -565,12 +568,17 @@ zenity_emerge() {
 		sed -n "${start},${end}p" "${tmpFile[logs]}" | sed 's/^ \* //' | remove_blanks \
 		| zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title}"
 	done
+	
+	# Aborted
+	if [ $ret -gt 0 ]; then
+		prepare_for_exit
+		return 1
+	fi
 
 	#error
 	[ -s "${tmpFile[result]}" ] && [ $( cat "${tmpFile[result]}" ) -gt 0 ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title $"Error" --text "${exText}" && prepare_for_exit && return ${exCode}
 	
-	rm "${tmpFile[result]}"
-
+	prepare_for_exit
 	return 0
 }
 
@@ -665,8 +673,12 @@ zenity_upgrade () {
 			time_h[$i]=""
 		done
 		if [ ${#nomerge_action[@]} -gt 0 ]; then
-			[ ${#nomerge_action[@]} -gt 1 ] && plur="s" || plur=""
-			text+="\n"; text+=$"Some package${plur} won't be installed :"; text+="\n"
+			text+="\n"
+			if [ ${#nomerge_action[@]} -gt 1 ]; then
+				text+=$"One package won't be installed :"
+			else text+=$"Some packages won't be installed :"
+			fi
+			text+="\n"
 			for i in ${!nomerge_action[@]}; do
 				nomerge[$i]=$( sed '/^\[ebuild/d' "${tmpFile[logs]}" | sed -n "$(( $i+1 ))p" | cut -d] -f2- )
 				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge[$i]}\n"
@@ -731,8 +743,11 @@ zenity_upgrade () {
 		;;
 	esac	
 	
-	[ $number -gt 1 ] && plur="s" || plur=""
-	[ $ACTION = 'upgrade' ] && title=$"${number} package${plur} should be merged" || title=$"${number} package${plur} should be unmerged"
+	if [ $ACTION = 'upgrade' ]; then
+		[ $number -gt 1 ] && title=$"One package should be merged" || title=$"${number} packages should be merged"
+	else
+		[ $number -gt 1 ] && title=$"One package should be unmerged" || title=$"${number} packages should be unmerged"
+	fi
 	
 	choice=( $(
 		for i in ${!package[@]}; do
