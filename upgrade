@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to sync && upgrade Gentoo portage
-version="1.04-r6"; script_name=`basename "$0"`
+version="1.04-r7"; script_name=`basename "$0"`
 
 TEXTDOMAIN=upgrade-portage
 TEXTDOMAINDIR=/usr/share/locale
@@ -627,7 +627,6 @@ zenity_upgrade () {
 	text+="\n"
 	case $ACTION in
 	 'depclean')
-		local title="unmerged"
 		local number=$( sed -n '$p' "${tmpFile[logs]}" | awk -F' ' '{print $4}' )
 		# remove unwanted lines from output
 		sed -i '/\//!d' "${tmpFile[logs]}"
@@ -643,12 +642,12 @@ zenity_upgrade () {
 		done
 		unset versions selected protected omitted
 
-		local options="--checklist --column unmerge --column package --column selected --column protected --column omitted"
+		local cols=( $"Unmerge" $"Package" $"Selected" $"Protected" $"Omitted" )
+		local options="--checklist --column ${cols[0]} --column ${cols[1]} --column ${cols[2]} --column ${cols[3]} --column ${cols[4]}"
 		local aborted=1
 		;;
 
 	'upgrade')
-		local title="merged"
 		local messages=$( sed '/^\[/d' "${tmpFile[logs]}" )
 		sed -i '/^\[/!d' "${tmpFile[logs]}"
 		
@@ -670,10 +669,7 @@ zenity_upgrade () {
 		done
 		if [ ${#nomerge_action[@]} -gt 0 ]; then
 			text+="\n"
-			if [ ${#nomerge_action[@]} -gt 1 ]; then
-				text+=$"One package won't be installed :"
-			else text+=$"Some packages won't be installed :"
-			fi
+			[ ${#nomerge_action[@]} -gt 1 ] && text+=$"One package won't be installed :" || text+=$"Some packages won't be installed :"
 			text+="\n"
 			for i in ${!nomerge_action[@]}; do
 				nomerge[$i]=$( sed '/^\[ebuild/d' "${tmpFile[logs]}" | sed -n "$(( $i+1 ))p" | cut -d] -f2- )
@@ -715,11 +711,12 @@ zenity_upgrade () {
 			unset time_hum
 		fi
 		
-		local options="--column package --column action --column version --column current --column time"
+		local cols=( $"Merge" $"Package" $"Action" $"Version" $"Current" $"Time" )
+		local options="--column ${cols[1]} --column ${cols[2]} --column ${cols[3]} --column ${cols[4]} --column ${cols[5]}"
 		case ${UP} in
 		 @*)
 		 	check="TRUE\n"
-			options="--checklist --column merge ${options}"
+			options="--checklist --column ${cols[0]} ${options}"
 			[ $ESTIMATE ] || options+=" --hide-column 6"
 			aborted=1
 			;;
@@ -846,7 +843,19 @@ ${Green}SET${normal} :
 
 HELP
 )
-        echo -e "$help"
+        echo -e $"${bold}Script for upgrading Gentoo${normal}
+Usage : ${Blue}upgrade${normal} [${Green}OPTIONS${normal}] [${Green}@SET${normal}]
+
+${Green}OPTIONS${normal} :
+	${bold}-h|--help${normal}	Print this help and exit
+	${bold}-V|--version${normal}    Print this script's current version and exit
+	
+	${bold}-q|--quiet${normal}    	Run quietly
+	${bold}-v|--verbose${normal}    Run verbosely
+	${bold}-x${normal}    Run graphically
+	
+${Green}SET${normal} :
+	Set to upgrade, if not set ${green}@world${nocolor} will be used"
         exit 0
         ;;
 
@@ -864,7 +873,7 @@ HELP
 		set_param 'verbose' 1 || exit 255
 		;;
 	 "-V"|"--version")
-		echo -e "${Orange}${script_name^}${normal} script for portage based system, version ${orange}${version}${nocolor}"
+		echo -e $"${Orange}${script_name^}${normal} script for portage based system, version ${orange}${version}${nocolor}"
 		exit 0
 		;;
 
