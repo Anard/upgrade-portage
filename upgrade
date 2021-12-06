@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to sync && upgrade Gentoo portage
-version="1.04-r6"; script_name=`basename "$0"`
+version="1.04-r7"; script_name=`basename "$0"`
 
 TEXTDOMAIN=upgrade-portage
 TEXTDOMAINDIR=/usr/share/locale
@@ -627,7 +627,6 @@ zenity_upgrade () {
 	text+="\n"
 	case $ACTION in
 	 'depclean')
-		local title="unmerged"
 		local number=$( sed -n '$p' "${tmpFile[logs]}" | awk -F' ' '{print $4}' )
 		# remove unwanted lines from output
 		sed -i '/\//!d' "${tmpFile[logs]}"
@@ -643,12 +642,12 @@ zenity_upgrade () {
 		done
 		unset versions selected protected omitted
 
-		local options="--checklist --column unmerge --column package --column selected --column protected --column omitted"
+		local cols=( $"Unmerge" $"Package" $"Selected" $"Protected" $"Omitted" )
+		local options="--checklist --column ${cols[0]} --column ${cols[1]} --column ${cols[2]} --column ${cols[3]} --column ${cols[4]}"
 		local aborted=1
 		;;
 
 	'upgrade')
-		local title="merged"
 		local messages=$( sed '/^\[/d' "${tmpFile[logs]}" )
 		sed -i '/^\[/!d' "${tmpFile[logs]}"
 		
@@ -670,9 +669,7 @@ zenity_upgrade () {
 		done
 		if [ ${#nomerge_action[@]} -gt 0 ]; then
 			text+="\n"
-			if [ ${#nomerge_action[@]} -gt 1 ]; then
-				text+=$"One package won't be installed :"
-			else text+=$"Some packages won't be installed :"
+			[ ${#nomerge_action[@]} -gt 1 ] && text+=$"One package won't be installed :" || text+=$"Some packages won't be installed :"
 			fi
 			text+="\n"
 			for i in ${!nomerge_action[@]}; do
@@ -715,11 +712,12 @@ zenity_upgrade () {
 			unset time_hum
 		fi
 		
-		local options="--column package --column action --column version --column current --column time"
+		local cols=( $"Merge" $"Package" $"Action" $"Version" $"Current" $"Time" )
+		local options="--column ${cols[1]} --column ${cols[2]} --column ${cols[3]} --column ${cols[4]} --column ${cols[5]}"
 		case ${UP} in
 		 @*)
 		 	check="TRUE\n"
-			options="--checklist --column merge ${options}"
+			options="--checklist --column ${cols[0]} ${options}"
 			[ $ESTIMATE ] || options+=" --hide-column 6"
 			aborted=1
 			;;

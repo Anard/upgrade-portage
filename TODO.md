@@ -9,3 +9,6 @@ Graphical interface via zenity
 - check portage messages
 
 - get colored/bold output from emerge to zenity
+
+- see what happpen if zenity have no imposed width (specially with checkboxes)
+- translate help and version messages
