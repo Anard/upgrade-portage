@@ -848,12 +848,12 @@ Usage : ${Blue}upgrade${normal} [${Green}OPTIONS${normal}] [${Green}@SET${normal
 
 ${Green}OPTIONS${normal} :
 	${bold}-h|--help${normal}	Print this help and exit
-	${bold}-V|--version${normal}    Print this script's current version and exit
-	
-	${bold}-q|--quiet${normal}    	Run quietly
-	${bold}-v|--verbose${normal}    Run verbosely
-	${bold}-x${normal}    Run graphically
-	
+	${bold}-V|--version${normal}	Print this script's current version and exit
+
+	${bold}-q|--quiet${normal}	Run quietly
+	${bold}-v|--verbose${normal}	Run verbosely
+	${bold}-x${normal}		Run graphically
+
 ${Green}SET${normal} :
 	Set to upgrade, if not set ${green}@world${nocolor} will be used"
         exit 0
