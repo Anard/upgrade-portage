@@ -575,7 +575,7 @@ zenity_emerge() {
 	#error
 	[ -s "${tmpFile[result]}" ] && [ $( cat "${tmpFile[result]}" ) -gt 0 ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title $"Error" --text "${exText}" && prepare_for_exit && return ${exCode}
 	
-	prepare_for_exit && return 0
+	rm "${tmpFile[result]}" && return 0
 }
 
 # Upgrade via zenity
