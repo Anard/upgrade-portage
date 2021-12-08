@@ -12,3 +12,5 @@ Graphical interface via zenity
 
 - see how to automatically increase zenity width (specially with checklists)
 - translate help message
+
+- uninstall  / blocks packages are not necessary in at end of list
