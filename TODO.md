@@ -11,6 +11,5 @@ Graphical interface via zenity
 - get colored/bold output from emerge to zenity
 
 - see how to automatically increase zenity width (specially with checklists)
-- translate help message
 
-- uninstall  / blocks packages are not necessary in at end of list
+- uninstall / blocks packages are not necessary in at end of list so all lists are wrong when existing uninstall/blocks
