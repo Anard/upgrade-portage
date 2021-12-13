@@ -674,7 +674,7 @@ zenity_upgrade () {
 		done
 		if [ ${#nomerge_action[@]} -gt 0 ]; then
 			text+="\n"
-			[ ${#nomerge_action[@]} -gt 1 ] && text+=$"One package won't be installed :" || text+=$"Some packages won't be installed :"
+			[ ${#nomerge_action[@]} -gt 1 ] && text+=$"Some packages won't be installed :" || text+=$"One package won't be installed :"
 			text+="\n"
 			for i in ${!nomerge_action[@]}; do
 				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge[$i]}\n"
