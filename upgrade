@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to sync && upgrade Gentoo portage
-version="1.04-r7"; script_name=`basename "$0"`
+version="1.04-r8"; script_name=`basename "$0"`
 
 TEXTDOMAIN=upgrade-portage
 TEXTDOMAINDIR=/usr/share/locale
@@ -653,26 +653,30 @@ zenity_upgrade () {
 		
 		# list of all packages that would be merged
 		unset nomerge
-		local nomerge_action=( $( sed '/^\[ebuild/d' "${tmpFile[logs]}" | cut -d[ -f2 | cut -d' ' -f1 ) )
 		local list=( $( sed '/^\[ebuild/!d' "${tmpFile[logs]}" | cut -d[ -f2 | cut -d] -f2 ) )
 		local number=${#list[@]}
 
 		# prepare output and ask for final choice
-		unset package version action current time time_h line
+		unset nomerge package version action current time time_h line
 		for i in ${!list[@]}; do
-			package[$i]=${list[$i]%-[0-9]*}
-			version[$i]=${list[$i]#${package[$i]}-}
-			action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d' ' -f2- | cut -d] -f1 )
-			grep -q ${package[$i]} ${worldFile} && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
-			current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d[ -f3 | cut -d] -f1 )
-			time_h[$i]=""
+			if [ "${list[$i]:0:7}" = "[ebuild" ]; then
+				package[$i]=${list[$i]%-[0-9]*}
+				version[$i]=${list[$i]#${package[$i]}-}
+				action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d' ' -f2- | cut -d] -f1 )
+				grep -q ${package[$i]} ${worldFile} && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
+				current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d[ -f3 | cut -d] -f1 )
+				time_h[$i]=""
+				
+			else
+				nomerge[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d] -f2- )
+				nomerge_action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d[ -f2 | cut -d' ' -f1 )
+			fi
 		done
 		if [ ${#nomerge_action[@]} -gt 0 ]; then
 			text+="\n"
 			[ ${#nomerge_action[@]} -gt 1 ] && text+=$"One package won't be installed :" || text+=$"Some packages won't be installed :"
 			text+="\n"
 			for i in ${!nomerge_action[@]}; do
-				nomerge[$i]=$( sed '/^\[ebuild/d' "${tmpFile[logs]}" | sed -n "$(( $i+1 ))p" | cut -d] -f2- )
 				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge[$i]}\n"
 			done
 		fi
