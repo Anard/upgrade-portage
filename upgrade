@@ -354,7 +354,7 @@ zenity_emerge() {
 		local avg=0; local nb=0
 		if [ $ESTIMATE ]; then
 			for i in ${!packList[@]}; do
-				if [ ${mergeEst[$i]} -gt 0 ]; then
+				if [ ${mergeEst[$i]} ]; then
 					let avg+=${mergeEst[$i]}
 					let nb+=1
 				fi
@@ -737,9 +737,9 @@ zenity_upgrade () {
 	esac	
 	
 	if [ $ACTION = 'upgrade' ]; then
-		[ $number -gt 1 ] && title=$"One package should be merged" || title=$"${number} packages should be merged"
+		[ $number -gt 1 ] && title=$"${number} packages should be merged" || title=$"One package should be merged"
 	else
-		[ $number -gt 1 ] && title=$"One package should be unmerged" || title=$"${number} packages should be unmerged"
+		[ $number -gt 1 ] && title=$"${number} packages should be unmerged" || title=$"One package should be unmerged"
 	fi
 	
 	choice=( $(
@@ -848,12 +848,12 @@ Usage : ${Blue}upgrade${normal} [${Green}OPTIONS${normal}] [${Green}@SET${normal
 
 ${Green}OPTIONS${normal} :
 	${bold}-h|--help${normal}	Print this help and exit
-	${bold}-V|--version${normal}    Print this script's current version and exit
-	
-	${bold}-q|--quiet${normal}    	Run quietly
-	${bold}-v|--verbose${normal}    Run verbosely
-	${bold}-x${normal}    Run graphically
-	
+	${bold}-V|--version${normal}	Print this script's current version and exit
+
+	${bold}-q|--quiet${normal}	Run quietly
+	${bold}-v|--verbose${normal}	Run verbosely
+	${bold}-x${normal}		Run graphically
+
 ${Green}SET${normal} :
 	Set to upgrade, if not set ${green}@world${nocolor} will be used"
         exit 0
@@ -972,7 +972,7 @@ if [ $now -lt $last ]; then
 		done
 	fi
 	text1=$"Last sync newer than 24h"
-	[ $SYNC ] && echo text2=$"forcing sync" || text2=$"skipping sync"
+	[ $SYNC ] && text2=$"forcing sync" || text2=$"skipping sync"
 	echo "${text1}, ${text2}"
 fi
 
