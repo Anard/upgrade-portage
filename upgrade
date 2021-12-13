@@ -649,15 +649,12 @@ zenity_upgrade () {
 
 	'upgrade')
 		local messages=$( sed '/^\[/d' "${tmpFile[logs]}" )
-		sed -i '/^\[/!d' "${tmpFile[logs]}"
 		
 		# list of all packages that would be merged
-		unset nomerge
-		local list=( $( sed '/^\[ebuild/!d' "${tmpFile[logs]}" | cut -d[ -f2 | cut -d] -f2 ) )
-		local number=${#list[@]}
+		local list=( $( sed '/^\[/!d' "${tmpFile[logs]}" | cut -d[ -f2 | cut -d] -f2 ) )
 
 		# prepare output and ask for final choice
-		unset nomerge package version action current time time_h line
+		unset nomerge_message nomerge_action package version action current time time_h line
 		for i in ${!list[@]}; do
 			if [ "${list[$i]:0:7}" = "[ebuild" ]; then
 				package[$i]=${list[$i]%-[0-9]*}
@@ -668,16 +665,18 @@ zenity_upgrade () {
 				time_h[$i]=""
 				
 			else
-				nomerge[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d] -f2- )
+				nomerge_message[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d] -f2- )
 				nomerge_action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d[ -f2 | cut -d' ' -f1 )
 			fi
 		done
+		local number=${#package[@]}
+		
 		if [ ${#nomerge_action[@]} -gt 0 ]; then
-			text+="\n"
-			[ ${#nomerge_action[@]} -gt 1 ] && text+=$"Some packages won't be installed :" || text+=$"One package won't be installed :"
-			text+="\n"
+			text+="\n<span style=\"bold\">"
+			[ ${#nomerge_action[@]} -gt 1 ] && text+=$"${#nomerge_action[@]} packages won't be installed :" || text+=$"One package won't be installed :"
+			text+="</span>\n"
 			for i in ${!nomerge_action[@]}; do
-				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge[$i]}\n"
+				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge_message[$i]}\n"
 			done
 		fi
 
