@@ -12,6 +12,5 @@ Graphical interface via zenity
 
 - see how to automatically increase zenity width (specially with checklists)
 
-- uninstall / blocks packages are not necessary in at end of list so all lists are wrong when existing uninstall/blocks
-	-- when looping on zenity_emerge --check, grep -q '^!!!' is not sufficient
-	-- after the loop, must create merge and nomerge lists as one, and differentiate it on second time
+- check install/not-install lists
+- when looping on zenity_emerge --check, grep -q '^!!!' is not sufficient
