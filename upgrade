@@ -523,7 +523,7 @@ zenity_emerge() {
 				else echo " - ${print}"
 				fi
 			else
-				local mess=$"Calculating dependencies"
+				local mess=$"Calculating upgrade"
 				echo "# ${mess} ${dots}"
 				[ "$dots" = "..." ] && dots="" || dots="${dots}."
 			fi
