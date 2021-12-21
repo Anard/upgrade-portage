@@ -406,11 +406,11 @@ zenity_emerge() {
 		 'check')
 		 	case ${UP} in
 		 	 @*)
-		 		emerge -pquDN ${UP} |& tee "${tmpFile[logs]}"
+		 		emerge -pquDN --autounmask=y ${UP} |& tee "${tmpFile[logs]}"
 		 		res=$?
 		 		;;
 		 	 *)
-		 	 	emerge -pqu1 ${UP} |& tee "${tmpFile[logs]}"
+		 	 	emerge -pqu1 --autounmask=y ${UP} |& tee "${tmpFile[logs]}"
 		 	 	res=$?
 		 	 	;;
 		 	esac
@@ -418,11 +418,11 @@ zenity_emerge() {
 		 'upgrade')
 		 	case ${UP} in
 		 	 @*)
-		 		emerge -quDN ${excluded} ${UP} |& tee "${tmpFile[logs]}"
+		 		emerge -quDN --autounmask=n ${excluded} ${UP} |& tee "${tmpFile[logs]}"
 		 		res=$?
 		 		;;
 		 	 *)
-		 	 	emerge -qu1 ${UP} |& tee "${tmpFile[logs]}"
+		 	 	emerge -qu1 --autounmask=n ${UP} |& tee "${tmpFile[logs]}"
 		 	 	res=$?
 		 	 	;;
 		 	esac
@@ -595,8 +595,8 @@ zenity_upgrade () {
 	esac
 	
 	# First check
-	check=1
-	while [ $check ]; do
+	[ "$ACTION" = "depclean" ] && unset check || check=1
+	while
 		zenity_emerge --check${opt}
 		ret=$?
 		if [ $ret -gt 1 ]; then
@@ -612,16 +612,18 @@ zenity_upgrade () {
 		# nothing found
 		[ ! -s "${tmpFile[logs]}" ] && prepare_for_exit && return 1
 		
-		if [ "$ACTION" = "depclean" ]; then
-			unset check
 		# Needs editing /etc/portage/
-		elif grep -q '^!!!' "${tmpFile[logs]}"; then
-			remove_blanks "${tmpFile[logs]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title $"Some configuration is necessary to proceed"
-			[ $? -gt 0 ] && prepare_for_exit && return 11
-			
-		else unset check		
+		if [ $check ]; then
+			if grep -q '^!!!' || grep -qei 'The following [^[:space:]]+ changes' "${tmpFile[logs]}"; then
+				remove_blanks "${tmpFile[logs]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title $"Some configuration is necessary to proceed"
+				[ $? -gt 0 ] && prepare_for_exit && return 11
+				
+			else unset check
+			fi
 		fi
-	done
+		
+		[ $check ]
+	do true; done
 	
 	local text=$"Uncheck packages you want to exclude."
 	text+="\n"
@@ -953,26 +955,24 @@ if [ $now -lt $last ]; then
 		fi
 	else
 		echo "${bold}${text1}${normal}. ${text2} ${answers}"
-		
-		while true;	do
-
+		local continue=1
+		while
 			read -p "${text3}" ans
 
 			case "$ans" in
 				${answerko}|${answerko^}|'')
 					set_param 'sync' 0
-					break 2
+					unset continue
 					;;
 
 				${answerok}|${answerok^})
-					break 2
-					;;
-
-				*)
-					echo -n $"Unknown answer"
-					echo " (${answerok}/${answerko^} ?)"
+					unset continue
 					;;
 			esac
+			[ $continue ]
+		do 
+			echo -n $"Unknown answer ${ans}"
+			echo " (${answerok}/${answerko^} ?)"
 		done
 	fi
 	text1=$"Last sync newer than 24h"
