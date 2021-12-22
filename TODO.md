@@ -13,7 +13,8 @@ Graphical interface via zenity
 - see how to automatically increase zenity width (specially with checklists)
 
 - check install/not-install lists
-- when looping on zenity_emerge --check, check grep control, sometimes '^!!!' could be non-blocking, how to decide if loop or not (confirmation ...) ? Maybe simply check 'The following [^[:space:]]+ changes', and keep '^!!!' as non-blocking message
+- when looping on zenity_emerge --check, check grep control, sometimes '^!!!' could be non-blocking, how to decide if loop or not (confirmation ...) ?
+	- check try anyway button ?
 
 - record last width in user config file to re-use (also create config file in /var/lib ?)
 - use "following packages are causing rebuilds" to make depgraph & hide these lines

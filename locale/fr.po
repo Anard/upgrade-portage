@@ -61,6 +61,10 @@ msgid "Error"
 msgstr "Erreur"
 
 # Function zenity_upgrade
+msgid "Réessayer"
+msgstr ""
+msgid "Démarrer quand même"
+msgstr ""
 msgid "Some configuration is necessary to proceed"
 msgstr "Une nouvelle configuration est requise"
 msgid "Uncheck packages you want to exclude."
