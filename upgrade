@@ -655,6 +655,32 @@ zenity_upgrade () {
 		;;
 
 	'upgrade')
+		# causes rebuilds listing
+		local rebuild-start=$( grep -n 'The following packages are causing rebuilds' "${tmpFile[logs]}" | awk -F: '{print $1}' )
+		local rebuild-line=${rebuild-start}
+		declare -A rebuilds
+		while
+			if [ sed -n "${rebuild-line}" "/causes rebuilds for:$/p" "${tmpFile[logs]}" ]; then
+				key=$( sed -n "${rebuild-line}p" "${tmpFile[logs]}" | cut -d( -f2 )
+				key=${key%-[0-9]*}
+				rebuilds[$key]=""
+			else
+				reb=$( sed -n "${rebuild-line}p" "${tmpFile[logs]}" | cut -d( -f2 )
+				rebuilds[$key]+=" ${reb%-[0-9]*}"
+			fi
+			let rebuild-line+=1
+			
+			[ sed -n "${rebuild-line}" "/^ *(/p" "${tmpFile[logs]}" ]
+		do true; done
+		sed "${rebuild-start},${rebuild-line}d" "${tmpFile[logs]}"
+		for key in ${!rebuilds[@]}; do
+			packs=$( echo ${rebuilds[$key]} )
+			text+="${key} causes rebuilds for\n"
+			for pack in ${packs[@]}; do
+				text+=" - ${pack}\n"
+			done
+		done
+	
 		local messages=$( sed '/^\[/d' "${tmpFile[logs]}" )
 		
 		# list of all packages that would be merged
