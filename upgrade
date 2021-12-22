@@ -43,7 +43,7 @@ set_param () {
 	 	[ $2 -eq 0 ] && unset UPDATE_PORTAGE || UPDATE_PORTAGE=1
 	 	;;
 	 'clean')
-	 	[ -2 -eq 0 ] && unset DEPCLEAN || DEPCLEAN=1
+	 	[ $2 -eq 0 ] && unset DEPCLEAN || DEPCLEAN=1
 	 	;;
 
 	 *)
