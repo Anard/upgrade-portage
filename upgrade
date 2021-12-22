@@ -62,7 +62,6 @@ get_line () {
 	else
 		grep -v "^$" "${tmpFile[logs]}" | sed -n '$p'
 	fi
-#	tail -1 "${tmpFile[logs]}"
 }
 
 # Function to print log line in zenity
