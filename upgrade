@@ -328,7 +328,7 @@ zenity_emerge() {
 		esac
 		local slp=1
 	 	shift
-	 	local options=""; local excluded="" 	
+		local options=""; local excluded=""
 	 	while [ $# -gt 1 ]; do
 	 		case $1 in
 	 	 	 --choice)
@@ -590,7 +590,7 @@ zenity_upgrade () {
 	 	local ACTION='upgrade'
 	 	local UP=$1
 	 	local opt=" $UP"
-	 	;;	
+		;;
 	esac
 	
 	# First check
@@ -613,7 +613,6 @@ zenity_upgrade () {
 
 		# Needs editing /etc/portage/
 		if [ $check ]; then
-			
 			if grep -q -e '^!!!' -ie 'The following [^[:space:]]+ changes' "${tmpFile[logs]}"; then
 				local ans=$( remove_blanks "${tmpFile[logs]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --OK-label $"Check again" --extra-button $"Try anyway" --text-info --title $"Some configuration is necessary to proceed" )
 				if [ $? -gt 0 ]; then
@@ -628,7 +627,8 @@ zenity_upgrade () {
 		fi
 		
 		[ $check ]
-	do true; done
+	do echo $"Checking again..."
+	done
 	
 	local text=$"Uncheck packages you want to exclude."
 	text+="\n"
@@ -655,38 +655,35 @@ zenity_upgrade () {
 		;;
 
 	'upgrade')
-		# causes rebuilds listing
-		local rebuild-start=$( grep -n 'The following packages are causing rebuilds' "${tmpFile[logs]}" | awk -F: '{print $1}' )
-		local rebuild-line=${rebuild-start}
-		declare -A rebuilds
-		while
-			if [ sed -n "${rebuild-line}" "/causes rebuilds for:$/p" "${tmpFile[logs]}" ]; then
-				key=$( sed -n "${rebuild-line}p" "${tmpFile[logs]}" | cut -d( -f2 )
-				key=${key%-[0-9]*}
-				rebuilds[$key]=""
-			else
-				reb=$( sed -n "${rebuild-line}p" "${tmpFile[logs]}" | cut -d( -f2 )
-				rebuilds[$key]+=" ${reb%-[0-9]*}"
-			fi
-			let rebuild-line+=1
-			
-			[ sed -n "${rebuild-line}" "/^ *(/p" "${tmpFile[logs]}" ]
-		do true; done
-		sed "${rebuild-start},${rebuild-line}d" "${tmpFile[logs]}"
-		for key in ${!rebuilds[@]}; do
-			packs=$( echo ${rebuilds[$key]} )
-			text+="${key} causes rebuilds for\n"
-			for pack in ${packs[@]}; do
-				text+=" - ${pack}\n"
-			done
-		done
-	
+		# build packages which causes rebuilds listing
+		local rebuild_start=$( grep -n 'The following packages are causing rebuilds' "${tmpFile[logs]}" | awk -F: '{print $1}' )
+		if [ $rebuild_start ]; then
+			local rebuild_line=${rebuild_start}
+			declare -A rebuilds
+			while
+				if sed -n "${rebuild_line}" "/causes rebuilds for:$/p!{q1}" "${tmpFile[logs]}"; then
+					key=$( sed -n "${rebuild_line}p" "${tmpFile[logs]}" | cut -d'(' -f2 )
+					key=${key%-[0-9]*}
+					rebuilds[$key]=""
+				else
+					reb=$( sed -n "${rebuild_line}p" "${tmpFile[logs]}" | cut -d'(' -f2 )
+					rebuilds[$key]+=" ${reb%-[0-9]*}"
+				fi
+				let rebuild_line+=1
+				
+				sed -n "${rebuild_line}" "/^ *(/p!{q1}" "${tmpFile[logs]}"
+			do true; done
+			# delete these lines
+			sed -i "${rebuild_start},${rebuild_line}d" "${tmpFile[logs]}"
+		fi
+		
+		# other messages
 		local messages=$( sed '/^\[/d' "${tmpFile[logs]}" )
 		
 		# list of all packages that would be merged
 		local list=( $( sed '/^\[/!d' "${tmpFile[logs]}" | cut -d[ -f2 | cut -d] -f2 ) )
 
-		# prepare output and ask for final choice
+		# prepare lists
 		unset nomerge_message nomerge_action package version action current time time_h line
 		for i in ${!list[@]}; do
 			local type=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d[ -f2 | cut -d' ' -f1 )
@@ -704,7 +701,8 @@ zenity_upgrade () {
 			fi
 		done
 		local number=${#package[@]}
-		
+
+		# infos about not merged packages
 		if [ ${#nomerge_action[@]} -gt 0 ]; then
 			text+="\n<span font=\"bold\">"
 			[ ${#nomerge_action[@]} -gt 1 ] && text+=$"${#nomerge_action[@]} packages won't be installed :" || text+=$"One package won't be installed :"
@@ -713,6 +711,15 @@ zenity_upgrade () {
 				text+="<span color=\"brown\">${nomerge_action[$i]}</span> : ${nomerge_message[$i]}\n"
 			done
 		fi
+
+		# infos about rebuilds
+		for key in ${!rebuilds[@]}; do
+			packs=$( echo ${rebuilds[$key]} )
+			text+="<span font=\"bold\">${key}</span> causes rebuilds for\n"
+			for pack in ${packs[@]}; do
+				text+=" - ${pack}\n"
+			done
+		done
 
 		# Build time estimation
 		local nb=0    #number of packages found
@@ -826,23 +833,25 @@ zenity_upgrade () {
 	esac
 	
 	zenity_emerge ${options} --exclude "${exclude}"
-	[ $? -gt 0 ] && ret=$(( $?+10 )) || ret=0
-	
-	case $ACTION in
-	 'depclean')
-		if [ ! -s "${tmpFile[logs]}" ] && [ -z "$exclude" ]; then
-			ret=1
-		fi
-		;;
-	 'upgrade')
-		if grep -q "!!! existing preserved libs found" "${tmpFile[logs]}"; then
-			ret=3
-		elif [ ! -z "${exclude}" ] || [ ! "${UP}" = "@world" ]; then
-			ret=2
-		fi
-		;;
-	esac
-	
+	ret=$?
+	if [ $ret -gt 0 ]; then
+		ret=$(( $ret+10 ))
+	else
+		case $ACTION in
+		 'depclean')
+			if [ ! -s "${tmpFile[logs]}" ] && [ -z "$exclude" ]; then
+				ret=1
+			fi
+			;;
+		 'upgrade')
+			if grep -q "!!! existing preserved libs found" "${tmpFile[logs]}"; then
+				ret=3
+			elif [ ! -z "${exclude}" ] || [ ! "${UP}" = "@world" ]; then
+				ret=2
+			fi
+			;;
+		esac
+	fi
 	prepare_for_exit
 	return $ret
 }
