@@ -614,7 +614,7 @@ zenity_upgrade () {
 		# Needs editing /etc/portage/
 		if [ $check ]; then
 			if grep -q -e '^!!!' -ie 'The following [^[:space:]]+ changes' "${tmpFile[logs]}"; then
-				local ans=$( remove_blanks "${tmpFile[logs]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --OK-label $"Check again" --extra-button $"Try anyway" --text-info --title $"Some configuration is necessary to proceed" )
+				local ans=$( remove_blanks "${tmpFile[logs]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --ok-label $"Check again" --extra-button $"Try anyway" --text-info --title $"Some configuration is necessary to proceed" )
 				if [ $? -gt 0 ]; then
 					if [ "$ans" = $"Try anyway" ]; then
 						unset check
