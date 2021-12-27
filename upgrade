@@ -658,20 +658,23 @@ zenity_upgrade () {
 		# build packages which causes rebuilds listing
 		local rebuild_start=$( grep -n 'The following packages are causing rebuilds' "${tmpFile[logs]}" | awk -F: '{print $1}' )
 		if [ $rebuild_start ]; then
-			local rebuild_line=${rebuild_start}
+			local rebuild_line=$(( ${rebuild_start}+1 ))
+			local line
 			declare -A rebuilds
 			while
-				if sed -n "${rebuild_line}" "/causes rebuilds for:$/p!{q1}" "${tmpFile[logs]}"; then
-					key=$( sed -n "${rebuild_line}p" "${tmpFile[logs]}" | cut -d'(' -f2 )
+				let rebuild_line+=1
+				line=$( sed -n "${rebuild_line}p" "${tmpFile[logs]}" )
+				# get key
+				if echo "$line" | grep "causes rebuilds for"; then
+				key=$( echo "$line" | cut -d'(' -f2 )
 					key=${key%-[0-9]*}
 					rebuilds[$key]=""
-				else
-					reb=$( sed -n "${rebuild_line}p" "${tmpFile[logs]}" | cut -d'(' -f2 )
+				# get rebuild list
+				elif echo "$line" | grep -q "^ *("; then
+					reb=$( echo "$line" | cut -d'(' -f2 )
 					rebuilds[$key]+=" ${reb%-[0-9]*}"
+				else break
 				fi
-				let rebuild_line+=1
-				
-				sed -n "${rebuild_line}" "/^ *(/p!{q1}" "${tmpFile[logs]}"
 			do true; done
 			# delete these lines
 			sed -i "${rebuild_start},${rebuild_line}d" "${tmpFile[logs]}"
