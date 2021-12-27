@@ -666,7 +666,7 @@ zenity_upgrade () {
 				let rebuild_line+=1
 				line=$( sed -n "${rebuild_line}p" "${tmpFile[logs]}" )
 				# get key
-				if echo "$line" | grep "causes rebuilds for"; then
+				if echo "$line" | grep -q "causes rebuilds for"; then
 				key=$( echo "$line" | cut -d'(' -f2 )
 					key=${key%-[0-9]*}
 					rebuilds[$key]=""
