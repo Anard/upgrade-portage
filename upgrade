@@ -630,8 +630,9 @@ zenity_upgrade () {
 	do echo $"Checking again..."
 	done
 	
-	local text=$"Uncheck packages you want to exclude."
-	text+="\n"
+	local text="<span font=\"italic\">"
+	text+=$"Uncheck packages you want to exclude."
+	text+="</span>\n"
 	case $ACTION in
 	 'depclean')
 		local number=$( sed -n '$p' "${tmpFile[logs]}" | awk -F' ' '{print $4}' )
@@ -655,7 +656,7 @@ zenity_upgrade () {
 		;;
 
 	'upgrade')
-		# build packages which causes rebuilds listing
+		# build packages which causes rebuilds list
 		local rebuild_start=$( grep -n 'The following packages are causing rebuilds' "${tmpFile[logs]}" | awk -F: '{print $1}' )
 		if [ $rebuild_start ]; then
 			local rebuild_line=$(( ${rebuild_start}+1 ))
@@ -718,7 +719,7 @@ zenity_upgrade () {
 		# infos about rebuilds
 		for key in ${!rebuilds[@]}; do
 			packs=$( echo ${rebuilds[$key]} )
-			text+="<span font=\"bold\">${key}</span> causes rebuilds for\n"
+			text+=$"<span font=\"bold\">${key}</span> causes rebuilds for\n"
 			for pack in ${packs[@]}; do
 				text+=" - ${pack}\n"
 			done
