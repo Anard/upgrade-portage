@@ -657,7 +657,6 @@ zenity_upgrade () {
 
 	'upgrade')
 		# build packages which causes rebuilds table
-		rebuilds_mess=""
 		local rebuild_start=$( grep -n 'The following packages are causing rebuilds' "${tmpFile[logs]}" | awk -F: '{print $1}' )
 		if [ $rebuild_start ]; then
 			local num=$(( ${rebuild_start}+2 ))
@@ -683,7 +682,7 @@ zenity_upgrade () {
 		# list of all packages that would be merged
 		local list=( $( sed '/^\[/!d' "${tmpFile[logs]}" | cut -d[ -f2 | cut -d] -f2 ) )
 
-		# prepare lists
+		# prepare package lists
 		unset nomerge_message nomerge_action package version action current time time_h line
 		for i in ${!list[@]}; do
 			local type=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d[ -f2 | cut -d' ' -f1 )
