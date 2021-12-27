@@ -995,7 +995,7 @@ if [ $now -lt $last ]; then
 		fi
 	else
 		echo "${bold}${text1}${normal}. ${text2} ${answers}"
-		local continue=1
+		continue=1
 		while
 			read -p "${text3}" ans
 
