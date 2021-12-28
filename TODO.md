@@ -22,9 +22,8 @@ Graphical interface via zenity
 - use rebuilds list to make depgraph & hide these lines
 
 zenity-auto-kill : 
-bash
-
-...
+http://www.bernaerts-nicolas.fr/linux/331-linux-cancel-zenity-progress-dialog-right-way
+```...
 
 (
   echo "# running command 1"
@@ -54,4 +53,4 @@ do sleep 2; done
 # if some running tasks are still there, kill them
 [ "${PID_TASKS}" != "" ] && kill -9 ${PID_TASKS}
 
-next-command
+next-command```
