@@ -15,11 +15,12 @@ Graphical interface via zenity
 	- see zenity --attach option ?
 
 - check install/not-install/rebuilds lists
+- use rebuilds list to make depgraph
 - when looping on zenity_emerge --check, check grep control, sometimes '^!!!' could be non-blocking, how to decide if loop or not (confirmation ...) ?
 	- check try anyway button ?
 
 - record last width in user config file to re-use (also create config file in /var/lib ?)
-- use rebuilds list to make depgraph & hide these lines
+
 
 zenity-auto-kill : 
 http://www.bernaerts-nicolas.fr/linux/331-linux-cancel-zenity-progress-dialog-right-way
