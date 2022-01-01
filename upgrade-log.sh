@@ -3,20 +3,53 @@
 # If a file named maxSize is found in log directory, use this value for maxSize
 # USAGE : upgrade-log.sh LOG_FILE
 
+MAX_SIZE="10k" # default one
 [ $1 ] || exit 1
 logFile="$1"
 logDir="${logFile%/*}"
-# get maxSize or init it
-if [ -f "${logDir}/maxSize" ]; then
-	maxSize=$( cat "${logDir}/maxSize" )
-	[ -n "${maxSize}" ] && [ "${maxSize}" -eq "${maxSize}" ] 2>/dev/null;
-	[ $? -gt 0 ] && unset maxSize
-fi
-[ -n "${maxSize}" ] || maxSize=10000
+# function to synthetize size
+get_size () {
+	[ $1 ] || exit 1
+	local size=$1
+	unset unit
+	while [ ${size} ] && [ ! ${unit} ]; do
+		case ${size: -1} in
+			[0-9])	# break
+				unit=1;;
+			'o'|'O'|'b'|'B')	# cut
+				size=${size:0:-1};;
+			'k'|'K')
+				unit=1000;;
+			'm'|'M')
+				unit=1000000;;
+			'g'|'G')
+				unit=1000000000;;
+			't'|'T')
+				unit=1000000000000;;
+			*)
+				unset size;;
+		esac
+	done
+	[ $unit ] && [ $unit -gt 1 ] && size=${size:0:-1}
 
-# clean log file
+	if [ -n "${size}" ] && [ "${size}" -eq "${size}" ] 2>/dev/null; then
+		size=$(( ${size} * ${unit} ))
+		echo ${size}
+	fi
+	return 0
+}
+
+# does log file exists ? ...
 if [ -f "${logFile}" ]; then
-	maxSize=10000 # max size in bytes (1ko=1000)
+	# get maxSize or init it
+	[ -f "${logDir}/maxSize" ] && maxSize=$( get_size `cat "${logDir}/maxSize"` )
+	if [ ! $maxSize ]; then
+		echo "Using default value for maxSize (${MAX_SIZE})"
+		maxSize=$( get_size ${MAX_SIZE} )
+	else echo "Using customized value for maxSize (`cat "${logDir}/maxSize"`)"
+	fi
+
+	# clean log file
 	while [ $( wc -c "${logFile}" | cut -d' ' -f1 ) -gt ${maxSize} ]; do
 		logs=( $( grep -n -e "^###.*###$" "${logFile}" | cut -d: -f1 ) )
 		# remove first log
@@ -27,7 +60,7 @@ if [ -f "${logFile}" ]; then
 		fi
 	done
 	
-# create upgrade-portage log directory
+# ... or create upgrade-portage log directory
 else mkdir -p "$logDir"
 fi
 exit 0
