@@ -3,7 +3,7 @@ Name=System upgrade
 Name[fr]=Mise à jour système
 GenericName=System upgrade
 GenericName[fr]=Mise à jour système
-Exec=sh -c "logDir=\"\\${HOME}/.upgrade-portage\"; mkdir -p \"\\$logDir\"; sudo -A upgrade -x > \"\\${logDir}/upgrade.log\" "
+Exec=sh -c "logFile=\"\\${HOME}/.upgrade-portage/upgrade.log\"; upgrade-log.sh \"\\${logFile}\"; sudo -A upgrade -x >> \"\\${logFile}\" "
 Terminal=false
 Type=Application
 Icon=upgrade-portage

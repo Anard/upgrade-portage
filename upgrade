@@ -532,7 +532,16 @@ zenity_emerge() {
 		 	;;
 		esac
 		
-	done | zenity --width ${WIDTH} --window-icon "${iconPath}" --cancel-label $"Skip" --ok-label $"Continue" --progress --title "${title}" --text "" --auto-close ${options}
+	done | zenity \
+		--width ${WIDTH} \
+		--window-icon "${iconPath}" \
+		--cancel-label $"Skip" \
+		--ok-label $"Continue" \
+		--progress \
+		--title "${title}" \
+		--text "" \
+		--auto-close \
+		${options}
 
 	ret=$?
 	# Aborted
@@ -565,14 +574,24 @@ zenity_emerge() {
 		
 		# print messages
 		sed -n "${start},${end}p" "${tmpFile[logs]}" | sed 's/^ \* //' | remove_blanks \
-		| zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title}"
+		| zenity \
+			--width ${WIDTH} \
+			--height ${HEIGHT} \
+			--window-icon "${iconPath}" \
+			--text-info \
+			--title "${title}"
 	done
 	
 	# Aborted
 	[ $ret -gt 0 ] && prepare_for_exit && return 1
 
 	#error
-	[ -s "${tmpFile[result]}" ] && [ $( cat "${tmpFile[result]}" ) -gt 0 ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title $"Error" --text "${exText}" && prepare_for_exit && return ${exCode}
+	[ -s "${tmpFile[result]}" ] && [ $( cat "${tmpFile[result]}" ) -gt 0 ] && zenity \
+		--width ${WIDTH} \
+		--window-icon "${iconPath}" \
+		--error \
+		--title $"Error" \
+		--text "${exText}" && prepare_for_exit && return ${exCode}
 	
 	rm "${tmpFile[result]}" && return 0
 }
@@ -614,7 +633,15 @@ zenity_upgrade () {
 		# Needs editing /etc/portage/
 		if [ $check ]; then
 			if grep -q -e '^!!!' -ie 'The following [^[:space:]]+ changes' "${tmpFile[logs]}"; then
-				local ans=$( remove_blanks "${tmpFile[logs]}" | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --ok-label $"Check again" --extra-button $"Try anyway" --text-info --title $"Some configuration is necessary to proceed" )
+				local ans=$( remove_blanks "${tmpFile[logs]}" | zenity \
+					--width ${WIDTH} \
+					--height ${HEIGHT} \
+					--window-icon "${iconPath}" \
+					--ok-label $"Check again" \
+					--extra-button $"Try anyway" \
+					--text-info \
+					--title $"Some configuration is necessary to proceed" \
+				)
 				if [ $? -gt 0 ]; then
 					if [ "$ans" = $"Try anyway" ]; then
 						unset check
@@ -788,7 +815,15 @@ zenity_upgrade () {
 	choice=( $(
 		for i in ${!package[@]}; do
 			echo -e "${line[$i]}"
-		done | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --list ${options} --separator ' ' --title "${title}" --text "${text}" )
+		done | zenity \
+			--width ${WIDTH} \
+			--height ${HEIGHT} \
+			--window-icon "${iconPath}" \
+			--list ${options} \
+			--separator ' ' \
+			--title "${title}" \
+			--text "${text}" \
+		)
 	)
 	
 	ret=$?
@@ -959,7 +994,12 @@ for i in "${!repos[@]}"; do
 		if [ ${time[$i]} -gt `date '+%s'` ]; then
 			text1=$"Sync date for ${repos[$i]##*/} is newer than now"
 			text2=$", please correct your local time"
-			[ ! $GTK ] && echo -e "${red}${text1}${nocolor}${text2}" || zenity --width ${WIDTH} --window-icon "${iconPath}" --error --title $"Time error" --text "<span color=\"red\">${text1}</span>${text2}"
+			[ ! $GTK ] && echo -e "${red}${text1}${nocolor}${text2}" || zenity \
+				--width ${WIDTH} \
+				--window-icon "${iconPath}" \
+				--error \
+				--title $"Time error" \
+				--text "<span color=\"red\">${text1}</span>${text2}"
 			echo $"Exiting..."
 			exit 1
 		fi
@@ -989,8 +1029,14 @@ if [ $now -lt $last ]; then
 	answers="(${answerok}/${answerko^})"
 
 	if [ $GTK ]; then
-		if ! zenity --width ${WIDTH} --window-icon "${iconPath}" --question --title "${text1}" --text "${text2}" --default-cancel; then
-			set_param 'sync' 0
+		if ! zenity \
+			--width ${WIDTH} \
+			--window-icon "${iconPath}" \
+			--question \
+			--title "${text1}" \
+			--text "${text2}" \
+			--default-cancel
+		then set_param 'sync' 0
 		fi
 	else
 		echo "${bold}${text1}${normal}. ${text2} ${answers}"
@@ -1063,10 +1109,30 @@ if [ $GTK ]; then
 		choice=( $(
 			for i in ${!index[@]}; do
 				echo -e "TRUE\n${index[$i]}\n${title[$i]}\n${date[$i]}"
-			done | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --list --checklist --column 'read' --column 'index' --column 'Title' --column 'Date' --hide-column 2 --separator ' ' --title $"${#index[@]} news need reading" --text $"Keep checked those you want to read now" ) )
+			done | zenity \
+				--width ${WIDTH} \
+				--height ${HEIGHT} \
+				--window-icon "${iconPath}" \
+				--list \
+				--checklist \
+				--column 'read' \
+				--column 'index' \
+				--column 'Title' \
+				--column 'Date' \
+				--hide-column 2 \
+				--separator ' ' \
+				--title $"${#index[@]} news need reading" \
+				--text $"Keep checked those you want to read now" \
+			)
+		)
 
 		for i in ${!choice[@]}; do
-			eselect news read ${choice[$i]} | zenity --width ${WIDTH} --height ${HEIGHT} --window-icon "${iconPath}" --text-info --title "${title[$i]}"
+			eselect news read ${choice[$i]} | zenity \
+				--width ${WIDTH} \
+				--height ${HEIGHT} \
+				--window-icon "${iconPath}" \
+				--text-info \
+				--title "${title[$i]}"
 			[ $? -gt 0 ] && eselect news unread ${choice[$i]}
 		done
 	fi	
@@ -1087,7 +1153,12 @@ if [ $GTK ]; then
 	 	;;
 	 2) # partial
 		text=$"Partial upgrade is done"
-		zenity --width ${WIDTH} --window-icon "${iconPath}" --info --title $"Upgrade" --text "${text}"
+		zenity \
+			--width ${WIDTH} \
+			--window-icon "${iconPath}" \
+			--info \
+			--title $"Upgrade" \
+			--text "${text}"
 		exit 0
 	 	;;
 	 3) # preserved libs
@@ -1140,7 +1211,12 @@ fi
 
 # Finished
 [ $UPGRADE_NEEDED ] && text=$"Your system is now up to date" || text=$"Your system was already up to date"
-[ $GTK ] && zenity --width ${WIDTH} --window-icon "${iconPath}" --info --title $"Upgrade" --text "${text}" && prepare_for_exit
+[ $GTK ] && zenity \
+	--width ${WIDTH} \
+	--window-icon "${iconPath}" \
+	--info \
+	--title $"Upgrade" \
+	--text "${text}" && prepare_for_exit
 echo "${text}"
 
 exit 0
