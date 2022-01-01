@@ -5,8 +5,9 @@ Use `sudo upgrade` to upgrade your system or `upgrade --help` for help
 
 Use `sudo upgrade -x` (or launch .desktop file) to upgrade your system via a gtk interactive interface
 
-If launched from desktop file, script's stdout will be recorded in ~/.upgrade-portage/upgrade.log, this log file is cutted before execution to never exceed 10Ko
+If launched from desktop file, script's stdout will be recorded in ~/.upgrade-portage/upgrade.log
 You can track script log while upgrading system by typing `tail -f ~/.upgrade-portage/upgradelog` in a terminal
+This log file is cutted before execution to never exceed 10Ko, you can customize this value by setting it in a file named maxSize in ~/.upgrade-portage/
 
 ## Installation
 Prefered way is to use [overlay](https://github.com/Anard/anard-overlay) and emerge it :
