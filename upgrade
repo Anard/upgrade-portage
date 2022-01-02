@@ -22,7 +22,7 @@ HEIGHT=300
 set_param () {
 	case "$1" in
 	 'sync')
-		[ $2 -eq 0 ] && unset SYNC || SYNC=1
+		[ $2 -eq 0 ] && unset SYNC || SYNC=true
 		;;
 	 'quiet')
 		[ $2 -eq 0 ] && unset QUIET || QUIET='q'
@@ -31,19 +31,19 @@ set_param () {
 		[ $2 -eq 0 ] && unset VERBOSE || VERBOSE='v'
 		;;
 	 'gtk')
-		[ $2 -eq 0 ] && unset GTK || GTK=1
+		[ $2 -eq 0 ] && unset GTK || GTK=true
 		;;
 	 'estimate')
-	 	[ $2 -eq 0 ] && unset ESTIMATE || ESTIMATE=1
+	 	[ $2 -eq 0 ] && unset ESTIMATE || ESTIMATE=true
 	 	;;
 	 'upgrade')
-	 	[ $2 -eq 0 ] && unset UPGRADE_NEEDED || UPGRADE_NEEDED=1
+	 	[ $2 -eq 0 ] && unset UPGRADE_NEEDED || UPGRADE_NEEDED=true
 	 	;;
 	 'portage')
-	 	[ $2 -eq 0 ] && unset UPDATE_PORTAGE || UPDATE_PORTAGE=1
+	 	[ $2 -eq 0 ] && unset UPDATE_PORTAGE || UPDATE_PORTAGE=true
 	 	;;
 	 'clean')
-	 	[ $2 -eq 0 ] && unset DEPCLEAN || DEPCLEAN=1
+	 	[ $2 -eq 0 ] && unset DEPCLEAN || DEPCLEAN=true
 	 	;;
 
 	 *)
