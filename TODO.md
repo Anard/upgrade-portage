@@ -19,6 +19,8 @@ Graphical interface via zenity
 - when looping on zenity_emerge --check, check grep control, sometimes '^!!!' could be non-blocking, how to decide if loop or not (confirmation ...) ?
 	- check try anyway button ?
 
+- when a rebuild occurs ('R'), add informations about why (only visible in verbose mode)
+
 - record last width in user config file to re-use (also create config file in /var/lib ?)
 
 
