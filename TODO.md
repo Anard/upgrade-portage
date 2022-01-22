@@ -2,6 +2,7 @@ Graphical interface via zenity
 - skip pretend & use ask ?
 
 - see if -t --tree option can be used in emerge to better understand dependencies
+- maybe simply with -pv too...
 - check progress bar estimation => choice may be longer than emerge list if some packages are excluded
 
 - check handle of emerge @preserved-rebuild
