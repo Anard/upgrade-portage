@@ -405,11 +405,13 @@ zenity_emerge() {
 		 'check')
 		 	case ${UP} in
 		 	 @*)
-		 		emerge -pquDN --autounmask=y ${UP} |& tee "${tmpFile[logs]}"
+		 		emerge -pquDN ${UP} |& tee "${tmpFile[logs]}"
+#		 		emerge -pquDN --autounmask=y ${UP} |& tee "${tmpFile[logs]}"
 		 		res=$?
 		 		;;
 		 	 *)
-		 	 	emerge -pqu1 --autounmask=y ${UP} |& tee "${tmpFile[logs]}"
+		 	 	emerge -pqu1 ${UP} |& tee "${tmpFile[logs]}"
+#		 	 	emerge -pqu1 --autounmask=y ${UP} |& tee "${tmpFile[logs]}"
 		 	 	res=$?
 		 	 	;;
 		 	esac
@@ -417,11 +419,13 @@ zenity_emerge() {
 		 'upgrade')
 		 	case ${UP} in
 		 	 @*)
-		 		emerge -quDN --autounmask=n ${excluded} ${UP} |& tee "${tmpFile[logs]}"
+		 		emerge -quDN ${excluded} ${UP} |& tee "${tmpFile[logs]}"
+#		 		emerge -quDN --autounmask=n ${excluded} ${UP} |& tee "${tmpFile[logs]}"
 		 		res=$?
 		 		;;
 		 	 *)
-		 	 	emerge -qu1 --autounmask=n ${UP} |& tee "${tmpFile[logs]}"
+		 	 	emerge -qu1 ${UP} |& tee "${tmpFile[logs]}"
+#		 	 	emerge -qu1 --autounmask=n ${UP} |& tee "${tmpFile[logs]}"
 		 	 	res=$?
 		 	 	;;
 		 	esac
