@@ -351,6 +351,7 @@ zenity_emerge() {
 
 		# avg time
 		local avg=0; local nb=0
+		local estMsg=$"estimated"
 		if [ $ESTIMATE ]; then
 			for i in ${!packList[@]}; do
 				if [ ${mergeEst[$i]} ]; then
@@ -522,7 +523,7 @@ zenity_emerge() {
 				print_line -n
 				print=$( print_human_time elapsed_h )
 				if [ ${mergeEst[$cur_index]} -gt 0 ]; then
-					echo " - ${print} / ${time_h[$cur_index]} (estimated)"
+					echo " - ${print} / ${time_h[$cur_index]} (${estMsg})"
 				else echo " - ${print}"
 				fi
 			else
