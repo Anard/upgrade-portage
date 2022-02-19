@@ -12,6 +12,7 @@ Graphical interface via zenity
 - get colored/bold output from emerge to zenity
 
 - see how to automatically increase zenity width (specially with checklists)
+- record last width in user config file to re-use (also create config file in /var/lib ?)
 - add a text-info message if checklist messages are too long
 	- see zenity --attach option ?
 
@@ -21,9 +22,6 @@ Graphical interface via zenity
 	- check try anyway button ?
 
 - when a rebuild occurs ('R'), add informations about why (only visible in verbose mode)
-
-- record last width in user config file to re-use (also create config file in /var/lib ?)
-
 
 zenity-auto-kill : 
 http://www.bernaerts-nicolas.fr/linux/331-linux-cancel-zenity-progress-dialog-right-way
