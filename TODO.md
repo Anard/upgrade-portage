@@ -23,6 +23,8 @@ Graphical interface via zenity
 
 - when a rebuild occurs ('R'), add informations about why (only visible in verbose mode)
 
+- after --decpclean, eclean packages && distfiles
+
 zenity-auto-kill : 
 http://www.bernaerts-nicolas.fr/linux/331-linux-cancel-zenity-progress-dialog-right-way
 ```...
