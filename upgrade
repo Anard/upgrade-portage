@@ -406,7 +406,7 @@ zenity_emerge() {
 		 'check')
 		 	case ${UP} in
 		 	 @*)
-		 		emerge -pquDN ${UP} |& tee "${tmpFile[logs]}"
+		 		emerge -pquDU ${UP} |& tee "${tmpFile[logs]}"
 #		 		emerge -pquDN --autounmask=y ${UP} |& tee "${tmpFile[logs]}"
 		 		res=$?
 		 		;;
@@ -420,7 +420,7 @@ zenity_emerge() {
 		 'upgrade')
 		 	case ${UP} in
 		 	 @*)
-		 		emerge -quDN ${excluded} ${UP} |& tee "${tmpFile[logs]}"
+		 		emerge -quDU ${excluded} ${UP} |& tee "${tmpFile[logs]}"
 #		 		emerge -quDN --autounmask=n ${excluded} ${UP} |& tee "${tmpFile[logs]}"
 		 		res=$?
 		 		;;
@@ -1179,7 +1179,7 @@ if [ $GTK ]; then
 else
 	text=$"Checking for upgrades"
 	echo -e "${green}${text}...${nocolor}"
-	emerge -a${QUIET}${VERBOSE}uDN ${SET}
+	emerge -a${QUIET}${VERBOSE}uDU ${SET}
 
 	if [ $? -gt 0 ]; then
 		text1=$"An error occurred on compilation time"
