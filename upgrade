@@ -405,9 +405,13 @@ zenity_emerge() {
 		 	;;
 		 'check')
 		 	case ${UP} in
-		 	 @*)
+		 	 @world)
 		 		emerge -pquDU ${UP} |& tee "${tmpFile[logs]}"
 #		 		emerge -pquDN --autounmask=y ${UP} |& tee "${tmpFile[logs]}"
+		 		res=$?
+		 		;;
+		 	 @*)
+		 		emerge -pq ${UP} |& tee "${tmpFile[logs]}"
 		 		res=$?
 		 		;;
 		 	 *)
@@ -419,9 +423,13 @@ zenity_emerge() {
 		 	;;
 		 'upgrade')
 		 	case ${UP} in
-		 	 @*)
+		 	 @world)
 		 		emerge -quDU ${excluded} ${UP} |& tee "${tmpFile[logs]}"
 #		 		emerge -quDN --autounmask=n ${excluded} ${UP} |& tee "${tmpFile[logs]}"
+		 		res=$?
+		 		;;
+		 	 @*)
+		 		emerge -q ${excluded} ${UP} |& tee "${tmpFile[logs]}"
 		 		res=$?
 		 		;;
 		 	 *)
