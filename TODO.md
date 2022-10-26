@@ -1,3 +1,11 @@
+BUGS
+-	[uninstall     ] sys-devel/lld-14.0.6::gentoo  USE="-debug -test -verify-sig" 
+	[blocks b      ] sys-devel/lld:0 ("sys-devel/lld:0" is soft blocking sys-devel/lld-14.0.6-r1)
+gives bad resuults in zenity window
+-	use ```Total: 14 packages (12 upgrades, 1 in new slot, 1 reinstall, 1 uninstall), Size of downloads: 1 041 666 KiB
+Conflict: 1 block (all satisfied)``` in zenity text in place of "x packages won't be installed"
+ 
+
 Graphical interface via zenity
 - skip pretend & use ask ?
 
