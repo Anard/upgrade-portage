@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script to sync && upgrade Gentoo portage
-version="1.05"; script_name=`basename "$0"`
+version="1.06"; script_name=`basename "$0"`
 
 TEXTDOMAIN=upgrade-portage
 TEXTDOMAINDIR=/usr/share/locale
@@ -13,7 +13,6 @@ iconPath="/usr/share/icons/hicolor/64x64/apps/upgrade-portage.png"
 if [ ! -f "${iconPath}" ]; then
 	iconPath="`dirname \"$0\"`/upgrade-portage.png"
 fi
-worldFile="/var/lib/portage/world"
 declare -A tmpFile=( [logs]="/tmp/upgrade-portage.log" [result]="/tmp/zenity-result" )
 WIDTH=500
 HEIGHT=300
@@ -388,7 +387,7 @@ zenity_emerge() {
 		 'sync')
 			emerge --sync |& tee "${tmpFile[logs]}"
 			res=$?
-			if [ $res -eq 0 ] && type eix &> /dev/null; then
+			if [ $res -eq 0 ]; then
 				echo -e "${green}${eix_mess}...${nocolor}"
 				eix-update & pid=$!
 				exFuncs[ $(( ${#exFuncs[@]}-1 )) ]=$pid
@@ -721,7 +720,7 @@ zenity_upgrade () {
 		
 		# list of all packages that would be merged
 		local list=( $( sed '/^\[/!d' "${tmpFile[logs]}" | cut -d[ -f2 | cut -d] -f2 ) )
-
+		local worldList=( $( EIX_LIMIT=0 eix --selected --only-names ) )
 		# prepare package lists
 		unset nomerge_message nomerge_action package version action current time time_h line
 		for i in ${!list[@]}; do
@@ -730,7 +729,8 @@ zenity_upgrade () {
 				package[$i]=${list[$i]%-[0-9]*}
 				version[$i]=${list[$i]#${package[$i]}-}
 				action[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d' ' -f2- | cut -d] -f1 )
-				grep -q ${package[$i]} ${worldFile} && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
+				# check if package is in world list (world file or sets)
+				echo ${worldList[*]} | tr " " '\n' | grep -Fqx ${package[$i]} && action[$i]="*${action[$i]}*" || action[$i]=" ${action[$i]} "
 				current[$i]=$( sed -n "$(( $i+1 ))p" "${tmpFile[logs]}" | cut -d[ -f3 | cut -d] -f1 )
 				time_h[$i]=""
 				
@@ -1085,10 +1085,8 @@ if [ $SYNC ]; then
 		echo -e "${green}${title}...${nocolor}"
 		emerge --sync
 		[ $? -gt 0 ] && exit 2
-		if type eix &> /dev/null; then
-			echo $"Updating eix database"
-			eix-update
-		fi
+		echo $"Updating eix database"
+		eix-update
 	else
 		zenity_emerge --sync
 		ret=$? && [ $ret -gt 0 ] && exit $ret
@@ -1100,10 +1098,7 @@ if [ $SYNC ]; then
 		fi
 	fi
 else 
-	if type eix &> /dev/null; then
-		eix -qu sys-apps/portage && set_param 'portage' 1 || set_param 'portage' 0
-	else set_param 'portage' 1
-	fi
+	eix -qu sys-apps/portage && set_param 'portage' 1 || set_param 'portage' 0
 fi
 
 # Upgrade
