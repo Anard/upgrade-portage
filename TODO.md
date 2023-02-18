@@ -4,7 +4,7 @@ BUGS
 gives bad resuults in zenity window
 -	use ```Total: 14 packages (12 upgrades, 1 in new slot, 1 reinstall, 1 uninstall), Size of downloads: 1 041 666 KiB
 Conflict: 1 block (all satisfied)``` in zenity text in place of "x packages won't be installed"
- 
+-	check return code of each repos synced and tell if one failed to sync
 
 Graphical interface via zenity
 - skip pretend & use ask ?
