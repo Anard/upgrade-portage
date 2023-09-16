@@ -58,7 +58,6 @@ set_param () {
 sleep_inhibitor () {
 	inhibit=true;
 	[ $( whoami ) == "root" ] && user=$SUDO_USER || user=$( whoami )
-	echo $user
 	if [ $# -gt 0 ]; then
 		case "$1" in
 		 'get'|'?')
