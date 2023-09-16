@@ -10,6 +10,12 @@ msgstr ""
 msgid "An error occurred while setting parameters"
 msgstr ""
 
+# Function sleep_inhibitor
+msgid "Inhibiting sleep mode"
+msgstr ""
+msgid "Reactivating sleep mode"
+msgstr ""
+
 # Function prepare_for_exit
 msgid "Cancelled ${func}"
 msgstr ""

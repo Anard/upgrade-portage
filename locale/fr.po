@@ -10,6 +10,12 @@ msgstr "Paramètre invalide pour la focntion ${FUNCNAME[0]}"
 msgid "An error occurred while setting parameters"
 msgstr "Un erreur est survenue lors de la saisie des paramètres"
 
+# Function sleep_inhibitor
+msgid "Inhibiting sleep mode"
+msgstr "Désactivation de la mise en veille"
+msgid "Reactivating sleep mode"
+msgstr "Réactivation de la mise en veille"
+
 # Function prepare_for_exit
 msgid "Cancelled ${func}"
 msgstr "Fonction ${func} annulée"

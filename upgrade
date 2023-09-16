@@ -72,6 +72,7 @@ sleep_inhibitor () {
 		esac
 	fi
 	
+	[ $inhibit == true ] && echo $"Inhibiting sleep mode" || echo $"Reactivating sleep mode"
 	su $user -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || return 1
 	unset inhibit user
 	return 0
