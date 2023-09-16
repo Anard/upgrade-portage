@@ -1014,7 +1014,7 @@ echo "### $(date) ###"
 repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 
 inhibited=$( sleep_inhibitor ? )
-[ $inhibited -eq 0 ] && sleep_inhibitor
+[ $inhibited -eq 0 ] && sleep_inhibitor || inhibited=1
 
 # Search for last sync timestamps
 last=0
