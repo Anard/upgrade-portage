@@ -57,10 +57,12 @@ set_param () {
 # Function to inhibit sleep mode
 sleep_inhibitor () {
 	inhibit=true;
+	[ $( whoami ) == "root" ] && user=$SUDO_USER || user=$( whoami )
+	echo $user
 	if [ $# -gt 0 ]; then
 		case "$1" in
 		 'get'|'?')
-		 	inhibit=$( xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode ) || return 255
+		 	inhibit=$( su $user -c 'xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode' ) || return 255
 		 	[ $inhibit == true ] && return 1 || return 0
 		 	;;
 		 'off'|0)
@@ -71,8 +73,8 @@ sleep_inhibitor () {
 		esac
 	fi
 	
-	xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit || return 1
-	unset inhibit
+	su $user -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || return 1
+	unset inhibit user
 	return 0
 }
 
