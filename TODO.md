@@ -1,4 +1,4 @@
-FINISH sleep_inhibitor
+FINISH sleep_inhibitor (test & extend to gnome/KDE desktops)
 
 Also check live packages (-9999) with using app-portage/smart-live-rebuild, commands similar to emerge
 
