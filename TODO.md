@@ -1,3 +1,7 @@
+FINISH sleep_inhibitor
+
+Also check live packages (-9999) with using app-portage/smart-live-rebuild, commands similar to emerge
+
 BUGS
 -	[uninstall     ] sys-devel/lld-14.0.6::gentoo  USE="-debug -test -verify-sig" 
 	[blocks b      ] sys-devel/lld:0 ("sys-devel/lld:0" is soft blocking sys-devel/lld-14.0.6-r1)
