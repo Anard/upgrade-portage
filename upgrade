@@ -55,8 +55,12 @@ set_param () {
 }
 
 # Function to inhibit sleep mode
+## USAGE: sleep_inhibitor [OPTION]
+## OPTION:	get/?: check if inhibitor avalaible (Xfce) & return result
+##			off/0 or on/1 
 sleep_inhibitor () {
-	inhibit=true;
+	local inhibit=true
+	local user
 	[ $( whoami ) == "root" ] && user=$SUDO_USER || user=$( whoami )
 	if [ $# -gt 0 ]; then
 		case "$1" in
@@ -76,7 +80,7 @@ sleep_inhibitor () {
 		[ $inhibit == true ] && echo $"Inhibiting sleep mode" || echo $"Reactivating sleep mode"
 	fi
 	su $user -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || return 1
-	unset inhibit user
+	[ $inhibit == true ] && INHIBITED=true || unset INHIBITED
 	return 0
 }
 
@@ -161,10 +165,19 @@ prepare_for_exit () {
 		[ -f "${file}" ] && rm "${file}"
 	done
 	
-	# get back sleep mode status
-	[ $inhibited -eq 0 ] && sleep_inhibitor off
-	unset inhibited
 	return 0
+}
+
+# Function to exit cleanly : delete variables, get sleep lmode status back if inhibited
+final_exit () {
+	if [ $# -gt 0 ]; then ret=$1
+	else ret=0
+	fi
+
+	# restore initial sleep mode status
+	[ $INHIBITED ] && sleep_inhibitor off
+
+	exit $ret
 }
 
 # Function to get human readable time from machine time
@@ -1021,11 +1034,6 @@ fi
 echo "### $(date) ###"
 repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 
-# Check if sleep mode can be inhibited and do it if necessary
-sleep_inhibitor ?
-inhibited=$?
-[ $inhibited -eq 0 ] && sleep_inhibitor || inhibited=1
-
 # Search for last sync timestamps
 last=0
 text=$"Checking repositories"
@@ -1114,18 +1122,23 @@ if [ $now -lt $last ]; then
 	echo "${text1}, ${text2}"
 fi
 
+
+# Check if sleep mode can be inhibited and inhibit if possible
+sleep_inhibitor ?
+[ $? -eq 0 ] && sleep_inhibitor
+
 # Sync
 if [ $SYNC ]; then
 	if [ ! $GTK ]; then
 		title=$"Syncing repositories"
 		echo -e "${green}${title}...${nocolor}"
 		emerge --sync
-		[ $? -gt 0 ] && exit 2
+		[ $? -gt 0 ] && final_exit 2
 		echo $"Updating eix database"
 		eix-update
 	else
 		zenity_emerge --sync
-		ret=$? && [ $ret -gt 0 ] && exit $ret
+		ret=$? && [ $ret -gt 0 ] && final_exit $ret
 		
 		# upgrade portage ?
 		if [ $( grep -n 'An update to portage is available' "${tmpFile[logs]}" | awk -F: '{print $1}' ) ]; then
@@ -1184,7 +1197,7 @@ if [ $GTK ]; then
 	# update portage?
 	if [ $UPDATE_PORTAGE ]; then
 		zenity_upgrade sys-apps/portage
-		[ $? -gt 10 ] && exit $(( $?-10 ))
+		[ $? -gt 10 ] && final_exit $(( $?-10 ))
 	fi
 
 	# upgrade
@@ -1203,14 +1216,14 @@ if [ $GTK ]; then
 			--info \
 			--title $"Upgrade" \
 			--text "${text}"
-		exit 0
+		final_exit 0
 	 	;;
 	 3) # preserved libs
 	 	zenity_upgrade @preserved-rebuild
 		[ $? -gt 10 ] && exit $(( $?-10 ))
 	 	;;
 	 *) # exit with error
-	 	exit $(( $?-10 ))
+	 	final_exit $(( $?-10 ))
 	 	;;
 	esac
 		
@@ -1224,7 +1237,7 @@ else
 		text1=$"An error occurred on compilation time"
 		text2=$"please check logs for more information"
 		echo -e "${red}${text1}${nocolor}, ${text2}"
-		exit 4
+		final_exit 4
 	fi
 fi
 
@@ -1241,7 +1254,7 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 		 	#set_param 'upgrade' 0
 		 	;;
 		 *) # exit with error
-		 	exit $(( $?-10 ))
+		 	final_exit $(( $?-10 ))
 		 	;;
 		esac
 
@@ -1255,18 +1268,12 @@ fi
 
 # Finished
 [ $UPGRADE_NEEDED ] && text=$"Your system is now up to date" || text=$"Your system was already up to date"
-if [ $GTK ]; then
-	zenity \
-		--width ${WIDTH} \
-		--window-icon "${iconPath}" \
-		--info \
-		--title $"Upgrade" \
-		--text "${text}" && prepare_for_exit
-else
-	# Get back sleep mode status
-	[ $inhibited -eq 0 ] && sleep_inhibitor off
-	unset inhibited
-fi
+[ $GTK ] && zenity \
+	--width ${WIDTH} \
+	--window-icon "${iconPath}" \
+	--info \
+	--title $"Upgrade" \
+	--text "${text}" && prepare_for_exit
 echo "${text}"
 
-exit 0
+final_exit 0
