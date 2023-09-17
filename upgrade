@@ -155,10 +155,15 @@ prepare_for_exit () {
 		local mess=$"Cancelled ${func}"
 		echo -e "${orange}${mess}${nocolor}"
 	done
+	
 	# delete tmp files
 	for file in ${tmpFile[@]}; do
 		[ -f "${file}" ] && rm "${file}"
 	done
+	
+	# get back sleep mode status
+	[ $inhibited -eq 0 ] && sleep_inhibitor off
+	unset inhibited
 	return 0
 }
 
@@ -1016,6 +1021,7 @@ fi
 echo "### $(date) ###"
 repos=( $( grep location /etc/portage/repos.conf/* | cut -d '=' -f2 ) )
 
+# Check if sleep mode can be inhibited and do it if necessary
 sleep_inhibitor ?
 inhibited=$?
 [ $inhibited -eq 0 ] && sleep_inhibitor || inhibited=1
@@ -1248,15 +1254,19 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 fi
 
 # Finished
-[ $inhibited -eq 0 ] && sleep_inhibitor off
-unset inhibited
 [ $UPGRADE_NEEDED ] && text=$"Your system is now up to date" || text=$"Your system was already up to date"
-[ $GTK ] && zenity \
-	--width ${WIDTH} \
-	--window-icon "${iconPath}" \
-	--info \
-	--title $"Upgrade" \
-	--text "${text}" && prepare_for_exit
+if [ $GTK ]; then
+	zenity \
+		--width ${WIDTH} \
+		--window-icon "${iconPath}" \
+		--info \
+		--title $"Upgrade" \
+		--text "${text}" && prepare_for_exit
+else
+	# Get back sleep mode status
+	[ $inhibited -eq 0 ] && sleep_inhibitor off
+	unset inhibited
+fi
 echo "${text}"
 
 exit 0
