@@ -1,4 +1,5 @@
 FINISH sleep_inhibitor (test & extend to gnome/KDE desktops)
+--> use dbus-send instead of presentation mode (see d-feet)
 
 Also check live packages (-9999) with using app-portage/smart-live-rebuild, commands similar to emerge
 
