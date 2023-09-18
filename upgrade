@@ -170,9 +170,7 @@ prepare_for_exit () {
 
 # Function to exit cleanly : delete variables, get sleep lmode status back if inhibited
 final_exit () {
-	if [ $# -gt 0 ]; then ret=$1
-	else ret=0
-	fi
+	[ $# -gt 0 ] && ret=$1 || ret=0
 
 	# restore initial sleep mode status
 	[ $INHIBITED ] && sleep_inhibitor off
@@ -1220,7 +1218,7 @@ if [ $GTK ]; then
 	 	;;
 	 3) # preserved libs
 	 	zenity_upgrade @preserved-rebuild
-		[ $? -gt 10 ] && exit $(( $?-10 ))
+		[ $? -gt 10 ] && final_exit $(( $?-10 ))
 	 	;;
 	 *) # exit with error
 	 	final_exit $(( $?-10 ))
@@ -1262,7 +1260,7 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 	else
 		text=$"Cleaning your system"
 		echo -e "${green}${text}...${nocolor}"
-		emerge -a${QUIET}${VERBOSE}c || exit 5
+		emerge -a${QUIET}${VERBOSE}c || final_exit 5
 	fi
 fi
 
