@@ -17,6 +17,8 @@ declare -A tmpFile=( [logs]="/tmp/upgrade-portage.log" [result]="/tmp/zenity-res
 WIDTH=500
 HEIGHT=300
 
+[ $( whoami ) == "root" ] && USER=$SUDO_USER || USER=$( whoami )
+
 ###### FUNCTIONS
 set_param () {
 	case "$1" in
@@ -47,6 +49,9 @@ set_param () {
 	 'inhibited')
 	 	[ $2 -eq 0 ] && unset INHIBITED || INHIBITED=true
 	 	;;
+	 'notify')
+	 	[ $2 -eq 0 ] && unset NOTIFY_AVAILABLE || NOTIFY_AVAILABLE=true
+	 	;;
 
 	 *)
 	 	local mess=$"An error occurred while setting parameters"
@@ -63,14 +68,12 @@ set_param () {
 ##			off/0 or on/1 
 sleep_inhibitor () {
 	local inhibit=true
-	local user
-	[ $( whoami ) == "root" ] && user=$SUDO_USER || user=$( whoami )
 	if [ $# -gt 0 ]; then
 		case "$1" in
 		 'get'|'?')
 		 	case $XDG_CURRENT_DESKTOP in
 		 	 *XFCE*)
-		 		inhibit=$( su $user -c 'xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode' ) || return 255
+		 		inhibit=$( su $USER -c 'xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode' ) || return 255
 		 		;;
 		 	 *GNOME*)
 		 	 	return 1
@@ -97,7 +100,7 @@ sleep_inhibitor () {
 	fi
  	case $XDG_CURRENT_DESKTOP in
  	 *XFCE*)
-		su $user -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || return 1
+		su $USER -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || return 1
 		;;
 	 *)
 	 	return 1
@@ -968,6 +971,51 @@ zenity_upgrade () {
 	return $ret
 }
 
+# Send notification
+## USAGE: notify -t TITLE -c TEXT
+notify () {
+	local title
+	local content
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		 "-t"|"--title")
+		 	shift
+		 	while [ $# -gt 0 ] && [ "${1:0:1}" != '-' ]; do
+		 		title="${title} ${1}"
+		 		shift
+		 	done
+		 	;;
+		 "-c"|"--content")
+		 	shift
+		 	while [ $# -gt 0 ] && [ "${1:0:1}" != '-' ]; do
+		 		content="${content} ${1}"
+		 		shift
+		 	done
+		 	;;
+		 	
+		 *)
+			echo -e $"${red}Unknown parameter ${1}${nocolor} for notification" && return 255
+			;;
+		esac
+		
+	done
+
+	[ NOTIFY_AVAILABLE ] && \
+		su ${USER} -c "notify-send \
+			-i upgrade-portage \
+			-u low \
+			'${title}' \
+			'${content}'" \
+		|| zenity \
+			--width ${WIDTH} \
+			--window-icon "${iconPath}" \
+			--info \
+			--title "${title}" \
+			--text "${content}"
+	
+	return 0
+}
+
 ######## START OF SCRIPT
 
 # Initialisation
@@ -1046,9 +1094,10 @@ ${Green}SET${normal} :
 	shift
 done
 
-# Check if qlop exists
+# Check if qlop & notify-send exist
 if [ $GTK ]; then
-       type qlop &> /dev/null && set_param 'estimate' 1 || set_param 'estimate' 0
+	type qlop &> /dev/null && set_param 'estimate' 1 || set_param 'estimate' 0
+	type notify-send &> /dev/null && set_param 'notify' 1 || set_param 'notify' 0
 fi
 
 # Get repos locations
@@ -1243,13 +1292,9 @@ if [ $GTK ]; then
 	 	set_param 'upgrade' 0
 	 	;;
 	 2) # partial
+	 	title=$"Upgrade"
 		text=$"Partial upgrade is done"
-		zenity \
-			--width ${WIDTH} \
-			--window-icon "${iconPath}" \
-			--info \
-			--title $"Upgrade" \
-			--text "${text}"
+		notify -t $"Upgrade" -c $"Partial upgrade is done"
 		final_exit 0
 	 	;;
 	 3) # preserved libs
@@ -1318,12 +1363,7 @@ fi
 
 # Finished
 [ $UPGRADE_NEEDED ] && text=$"Your system is now up to date" || text=$"Your system was already up to date"
-[ $GTK ] && zenity \
-	--width ${WIDTH} \
-	--window-icon "${iconPath}" \
-	--info \
-	--title $"Upgrade" \
-	--text "${text}" && prepare_for_exit
+[ $GTK ] && notify -t $"Upgrade" -c "${text}"
 echo "${text}"
 
 final_exit 0

@@ -122,6 +122,10 @@ msgstr ""
 msgid "${number} packages should be unmerged"
 msgstr ""
 
+# Function notify
+msgid "${red}Unknown parameter ${1}${nocolor} for notification"
+msgstr ""
+
 # MAIN
 msgid "${bold}Script for upgrading Gentoo${normal}"
 "Usage : ${Blue}upgrade${normal} [${Green}OPTIONS${normal}] [${Green}@SET${normal}]"
