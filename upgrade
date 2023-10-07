@@ -44,6 +44,9 @@ set_param () {
 	 'clean')
 	 	[ $2 -eq 0 ] && unset DEPCLEAN || DEPCLEAN=true
 	 	;;
+	 'inhibited')
+	 	[ $2 -eq 0 ] && unset INHIBITED || INHIBITED=true
+	 	;;
 
 	 *)
 	 	local mess=$"An error occurred while setting parameters"
@@ -65,7 +68,20 @@ sleep_inhibitor () {
 	if [ $# -gt 0 ]; then
 		case "$1" in
 		 'get'|'?')
-		 	inhibit=$( su $user -c 'xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode' ) || return 255
+		 	case $XDG_CURRENT_DESKTOP in
+		 	 *XFCE*)
+		 		inhibit=$( su $user -c 'xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode' ) || return 255
+		 		;;
+		 	 *GNOME*)
+		 	 	return 1
+		 	 	;;
+		 	 *KDE*)
+		 	 	return 1
+		 	 	;;
+		 	 *)
+		 	 	return 1
+		 	 	;;
+		 	esac
 		 	[ $inhibit == true ] && return 1 || return 0
 		 	;;
 		 'off'|0)
@@ -79,8 +95,15 @@ sleep_inhibitor () {
 	if [ ! $QUIET ] || [ $VERBOSE ]; then
 		[ $inhibit == true ] && echo $"Inhibiting sleep mode" || echo $"Reactivating sleep mode"
 	fi
-	su $user -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || return 1
-	[ $inhibit == true ] && INHIBITED=true || unset INHIBITED
+ 	case $XDG_CURRENT_DESKTOP in
+ 	 *XFCE*)
+		su $user -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || return 1
+		;;
+	 *)
+	 	return 1
+	 	;;
+	esac
+	[ $inhibit == true ] && set_param 'inhibited' 1 || set_param 'inhibited' 0
 	return 0
 }
 
@@ -1112,7 +1135,7 @@ if [ $now -lt $last ]; then
 			[ $continue ]
 		do 
 			echo -n $"Unknown answer ${ans}"
-			echo " (${answerok}/${answerko^} ?)"
+			echo " ${answers} ?"
 		done
 	fi
 	text1=$"Last sync newer than 24h"
@@ -1120,13 +1143,12 @@ if [ $now -lt $last ]; then
 	echo "${text1}, ${text2}"
 fi
 
-
-# Check if sleep mode can be inhibited and inhibit if possible
-sleep_inhibitor ?
-[ $? -eq 0 ] && sleep_inhibitor
-
 # Sync
 if [ $SYNC ]; then
+	# Check if sleep mode can be inhibited and inhibit if possible
+	sleep_inhibitor ?
+	[ $? -eq 0 ] && sleep_inhibitor
+	
 	if [ ! $GTK ]; then
 		title=$"Syncing repositories"
 		echo -e "${green}${title}...${nocolor}"
@@ -1144,6 +1166,9 @@ if [ $SYNC ]; then
 		else set_param 'portage' 0
 		fi
 	fi
+	
+	# restore initial sleep mode status
+	[ $INHIBITED ] && sleep_inhibitor off
 else 
 	eix -qu sys-apps/portage && set_param 'portage' 1 || set_param 'portage' 0
 fi
@@ -1194,11 +1219,22 @@ if [ $GTK ]; then
 
 	# update portage?
 	if [ $UPDATE_PORTAGE ]; then
+		# Check if sleep mode can be inhibited and inhibit if possible
+		sleep_inhibitor ?
+		[ $? -eq 0 ] && sleep_inhibitor
+		
 		zenity_upgrade sys-apps/portage
 		[ $? -gt 10 ] && final_exit $(( $?-10 ))
+		
+		# restore initial sleep mode status
+		[ $INHIBITED ] && sleep_inhibitor off
 	fi
 
 	# upgrade
+	# Check if sleep mode can be inhibited and inhibit if possible
+	sleep_inhibitor ?
+	[ $? -eq 0 ] && sleep_inhibitor
+	
 	zenity_upgrade ${SET}
 	case $? in
 	 0) # all done
@@ -1224,9 +1260,16 @@ if [ $GTK ]; then
 	 	final_exit $(( $?-10 ))
 	 	;;
 	esac
+	
+	# restore initial sleep mode status
+	[ $INHIBITED ] && sleep_inhibitor off
 		
 # Standard upgrade
 else
+	# Check if sleep mode can be inhibited and inhibit if possible
+	sleep_inhibitor ?
+	[ $? -eq 0 ] && sleep_inhibitor
+	
 	text=$"Checking for upgrades"
 	echo -e "${green}${text}...${nocolor}"
 	emerge -a${QUIET}${VERBOSE}uDU ${SET}
@@ -1237,11 +1280,17 @@ else
 		echo -e "${red}${text1}${nocolor}, ${text2}"
 		final_exit 4
 	fi
+	
+	# restore initial sleep mode status
+	[ $INHIBITED ] && sleep_inhibitor off
 fi
 
 # Depclean
 if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
-
+	# Check if sleep mode can be inhibited and inhibit if possible
+	sleep_inhibitor ?
+	[ $? -eq 0 ] && sleep_inhibitor
+	
 	if [ $GTK ]; then
 		zenity_upgrade --depclean
 		case $? in
@@ -1262,6 +1311,9 @@ if [ -z "$exclude" ] && [ "$SET" = "@world" ]; then
 		echo -e "${green}${text}...${nocolor}"
 		emerge -a${QUIET}${VERBOSE}c || final_exit 5
 	fi
+
+	# restore initial sleep mode status
+	[ $INHIBITED ] && sleep_inhibitor off
 fi
 
 # Finished
