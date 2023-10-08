@@ -194,7 +194,7 @@ prepare_for_exit () {
 	return 0
 }
 
-# Function to exit cleanly : delete variables, get sleep lmode status back if inhibited
+# Function to exit cleanly : get sleep mode status back if inhibited
 final_exit () {
 	[ $# -gt 0 ] && ret=$1 || ret=0
 
