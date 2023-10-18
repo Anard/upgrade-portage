@@ -70,7 +70,7 @@ sleep_inhibitor () {
 	if [ $# -gt 0 ]; then
 		case "$1" in
 		 'off'|0)
-		 	[ $INHIBITED ] && inhibit=false || unset inhibit
+		 	[ $INHIBITED ] && inhibit=false || return 0 # not inhibbited == nothing to do
 		 	;;
 		 'on'|1)
 		 	;;
@@ -80,12 +80,12 @@ sleep_inhibitor () {
 	fi
 	
 	# on/1 parameter
-	if [ $inhibit ] && [ $inhibit == true ]; then
+	if [ $inhibit == true ]; then
 	 	# First check if inhibition is available
 	 	case $XDG_CURRENT_DESKTOP in
 	 	 *XFCE*)
 	 		inhibit=$( su $USER -c 'xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode' ) || return 2
-	 		[ $inhibit == true ] && unset inhibit || inhibit=true
+	 		[ $inhibit == true ] && return 0 || inhibit=true # even inhibited == nothing to do
 	 		;;
 	 	 *)
 	 	 	return 1 # inhibit sleep mode still not implemented
@@ -94,25 +94,21 @@ sleep_inhibitor () {
 	fi
 	
 	# Verbose mode
-	if [ $inhibit ]; then
-		if [ ! $QUIET ] || [ $VERBOSE ]; then
-			[ $inhibit == true ] && echo $"Inhibiting sleep mode" || echo $"Reactivating sleep mode"
-		fi
+	if [ ! $QUIET ] || [ $VERBOSE ]; then
+		[ $inhibit == true ] && echo $"Inhibiting sleep mode" || echo $"Reactivating sleep mode"
 	fi
 	# Inhibit or uninhibit, delete local var on error
- 	if [ $inhibit ]; then
-	 	case $XDG_CURRENT_DESKTOP in
-	 	 *XFCE*)
-			su $USER -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || unset inhibit
-			;;
-		 *)
-		 	return 1
-		 	;;
-		esac
-	fi
+ 	case $XDG_CURRENT_DESKTOP in
+ 	 *XFCE*)
+		su $USER -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || return 2
+		;;
+	 *)
+	 	return 1
+	 	;;
+	esac
 	# check status, set global parameter & return
-	[ $inhibit ] && [ $inhibit == true ] && set_param 'inhibited' 1 || set_param 'inhibited' 0
-	[ $inhibit ] && return 0 || return 2 # nothing done (sleep already inhibited or error on inhibiting sleep mode)
+	[ $inhibit == true ] && set_param 'inhibited' 1 || set_param 'inhibited' 0
+	return 0
 }
 
 # Function to get last log line
