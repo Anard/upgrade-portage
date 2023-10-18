@@ -66,41 +66,53 @@ set_param () {
 ## USAGE: sleep_inhibitor [OPTION]
 ## OPTION:	off/0 or on/1 (default)
 sleep_inhibitor () {
-	local inhibit=false
+	local inhibit=true # if unset [ $inhibit ] test is false
 	if [ $# -gt 0 ]; then
 		case "$1" in
 		 'off'|0)
+		 	[ $INHIBITED ] && inhibit=false || unset inhibit
+		 	;;
+		 'on'|1)
 		 	;;
 		 *)
-		 	# First check if inhibition is available
-		 	case $XDG_CURRENT_DESKTOP in
-		 	 *XFCE*)
-		 		inhibit=$( su $USER -c 'xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode' ) || return 2
-		 		;;
-		 	 *)
-		 	 	return 1
-		 	 	;;
-		 	esac
-		 	;;
+		 	echo $"Invalid parameter $1 for function ${FUNCNAME[0]}" && return 255
 		esac
 	fi
 	
-	# Verbose mode
-	if [ ! $QUIET ] || [ $VERBOSE ]; then
-		[ $inhibit == true ] && echo $"Inhibiting sleep mode" || echo $"Reactivating sleep mode"
+	# on/1 parameter
+	if [ $inhibit ] && [ $inhibit == true ]; then
+	 	# First check if inhibition is available
+	 	case $XDG_CURRENT_DESKTOP in
+	 	 *XFCE*)
+	 		inhibit=$( su $USER -c 'xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode' ) || return 2
+	 		[ $inhibit == true ] && unset inhibit || inhibit=true
+	 		;;
+	 	 *)
+	 	 	return 1 # inhibit sleep mode still not implemented
+	 	 	;;
+	 	esac
 	fi
-	# Inhibit oor uninhibit, delete local var on error
- 	case $XDG_CURRENT_DESKTOP in
- 	 *XFCE*)
-		su $USER -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || unset inhibit
-		;;
-	 *)
-	 	return 1
-	 	;;
-	esac
+	
+	# Verbose mode
+	if [ $inhibit ]; then
+		if [ ! $QUIET ] || [ $VERBOSE ]; then
+			[ $inhibit == true ] && echo $"Inhibiting sleep mode" || echo $"Reactivating sleep mode"
+		fi
+	fi
+	# Inhibit or uninhibit, delete local var on error
+ 	if [ $inhibit ]; then
+	 	case $XDG_CURRENT_DESKTOP in
+	 	 *XFCE*)
+			su $USER -c "xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/presentation-mode -s $inhibit" || unset inhibit
+			;;
+		 *)
+		 	return 1
+		 	;;
+		esac
+	fi
 	# check status, set global parameter & return
 	[ $inhibit ] && [ $inhibit == true ] && set_param 'inhibited' 1 || set_param 'inhibited' 0
-	[ $inhibit ] && return 0 || return 3
+	[ $inhibit ] && return 0 || return 2 # nothing done (sleep already inhibited or error on inhibiting sleep mode)
 }
 
 # Function to get last log line
@@ -192,7 +204,7 @@ final_exit () {
 	[ $# -gt 0 ] && ret=$1 || ret=0
 
 	# restore initial sleep mode status
-	[ $INHIBITED ] && sleep_inhibitor off
+	sleep_inhibitor off
 
 	exit $ret
 }
@@ -632,7 +644,7 @@ zenity_emerge() {
 	fi
 	
 	# Restore initial sleep mode status
-	[ $INHIBITED ] && sleep_inhibitor off
+	sleep_inhibitor off
 
 	# Print messages from emerging
 	# $message is a table of a new messages line
@@ -996,7 +1008,7 @@ notify () {
 		 	;;
 		 	
 		 *)
-			echo -e $"${red}Unknown parameter ${1}${nocolor} for notification" && return 255
+			echo -e $"Invalid parameter $1 for function ${FUNCNAME[0]}" && return 255
 			;;
 		esac
 		
@@ -1072,7 +1084,7 @@ ${Green}SET${normal} :
 		;;
 
 	 "-x")
-		set_param 'gtk' 1 && set_param 'quiet' 1 && set_param 'verbose' 0 && break || exit 255
+		set_param 'gtk' 1 && set_param 'quiet' 1 && break || exit 255
 		;;
 	 "-q"|"--quiet")
 		set_param 'quiet' 1 || exit 255
@@ -1263,14 +1275,8 @@ if [ $GTK ]; then
 
 	# update portage?
 	if [ $UPDATE_PORTAGE ]; then
-		# Inhibit sleep mode if possible
-		sleep_inhibitor
-		
 		zenity_upgrade sys-apps/portage
 		[ $? -gt 10 ] && final_exit $(( $?-10 ))
-		
-		# restore initial sleep mode status
-		[ $INHIBITED ] && sleep_inhibitor off
 	fi
 
 	# upgrade
@@ -1313,7 +1319,7 @@ else
 	fi
 	
 	# restore initial sleep mode status
-	[ $INHIBITED ] && sleep_inhibitor off
+	sleep_inhibitor off
 fi
 
 # Depclean

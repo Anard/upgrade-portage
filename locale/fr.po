@@ -122,10 +122,6 @@ msgstr "Un paquet sera supprimé"
 msgid "${number} packages should be unmerged"
 msgstr "${number} paquets seront supprimés"
 
-# Function notify
-msgid "${red}Unknown parameter ${1}${nocolor} for notification"
-msgstr "${red}Paramètre ${1} inconnu${nocolor} pour les notifications"
-
 # MAIN
 msgid "${bold}Script for upgrading Gentoo${normal}"
 "Usage : ${Blue}upgrade${normal} [${Green}OPTIONS${normal}] [${Green}@SET${normal}]"
