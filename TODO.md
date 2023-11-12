@@ -2,6 +2,7 @@ FINISH sleep_inhibitor (test & extend to gnome/KDE desktops)
 --> use dbus-send instead of presentation mode (see d-feet)
 
 Also check live packages (-9999) with using app-portage/smart-live-rebuild, commands similar to emerge
+Also rebuild golang packages when dev-lang/go is updated (emerge @golang-rebuild)
 
 BUGS
 -	[uninstall     ] sys-devel/lld-14.0.6::gentoo  USE="-debug -test -verify-sig" 
