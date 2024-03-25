@@ -1,3 +1,8 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: upgrade-portage\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
 # Generic
 msgid "Invalid call to function ${FUNCNAME[0]}"
 msgstr "Appel invalide à la fonction ${FUNCNAME[0]}"
