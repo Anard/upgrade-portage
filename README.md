@@ -10,17 +10,18 @@ You can track script log while upgrading system by typing `tail -f ~/.upgrade-po
 This log file is cutted before execution to prevent exceeding 10Ko, you can customize this value by setting it in a file named maxSize in ~/.upgrade-portage/
 
 ## Installation
-Prefered way is to use [overlay](https://github.com/Anard/anard-overlay) and emerge it :
+Prefered way is to use [overlay](https://github.com/Anard/anard-overlay) and emerge it
+For a better cross-desktop integration, choice have been made to keep an older Zenity version (<4.0). This one is available in haarp overlay :
 ```
-# eselect repository enable anard
-# emerge --sync anard
+# eselect repository enable anard haarp
+# emerge --sync anard haarp
 # emerge -a upgrade-portage
 ```
 
 ## Dependencies
 ```
 portage
-zenity
+<zenity-4
 an askpass program for sudo to use .desktop file
 ```
 
