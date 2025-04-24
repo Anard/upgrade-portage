@@ -461,12 +461,13 @@ zenity_emerge() {
 		 'sync')
 			emerge --sync |& tee "${tmpFile[logs]}"
 			res=$?
-			if [ $res -eq 0 ]; then
-				echo -e "${green}${eix_mess}...${nocolor}"
-				eix-update & pid=$!
-				exFuncs[ $(( ${#exFuncs[@]}-1 )) ]=$pid
-				wait $pid
-			fi
+			# eix-update now launched by emerge --sync
+			#if [ $res -eq 0 ]; then
+			#	echo -e "${green}${eix_mess}...${nocolor}"
+			#	eix-update & pid=$!
+			#	exFuncs[ $(( ${#exFuncs[@]}-1 )) ]=$pid
+			#	wait $pid
+			#fi
 			;;
 		 'check-depclean')
 		 	emerge -pqc |& tee "${tmpFile[logs]}"
