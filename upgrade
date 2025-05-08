@@ -322,7 +322,7 @@ zenity_emerge() {
 	 	local exFuncs=( rsync emerge )
 	 	local exText=$"An error occurred while syncing, please check logs"
 	 	local exCode=2
-	 	local eix_mess=$"Updating eix database"
+	 	#local eix_mess=$"Updating eix database"
 	 	;;
 	 -C|--check-depclean)
 	 	local ACTION='check-depclean'
